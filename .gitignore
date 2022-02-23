@@ -1,0 +1,7 @@
+.DS_Store
+.vs
+.idea
+cmake-build-debug
+*.swp
+build
+

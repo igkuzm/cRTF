@@ -2,7 +2,7 @@
  * File              : cRTF.c
  * Author            : Igor V. Sementsov <ig.kuzm@gmail.com>
  * Date              : 13.01.2024
- * Last Modified Date: 13.01.2024
+ * Last Modified Date: 14.01.2024
  * Last Modified By  : Igor V. Sementsov <ig.kuzm@gmail.com>
  */
 /**
@@ -27,6 +27,7 @@
  *
  */
 
+#include <cstdio>
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
@@ -295,76 +296,42 @@ read_control_word(int ch, FILE *fp, char *buf, int *len)
 	return ch;
 }
 
-#define CALLBACK(c, ...)\
+#define CALLBACK(c, r, ...)\
 {\
 	if (c)\
 		if(c(__VA_ARGS__))\
-			return 0;\
+			return r;\
 }
 
-static int 
-c_rtf_parse_file(
-		FILE *fp, void *userdata, 
-		int(*open_group)(void *userdata, int *ch),
-		int(*close_group)(void *userdata, int *ch),
-		int(*control_word)(
-			void *userdata, 
-			int *ch, 
-			char *control_word, 
-			int len),
-		int(*anscii)(void *userdata, int ch))
+/*! \enum STEP
+ *
+ *  Detailed description
+ */
+enum step { 
+	ASCII,
+	CONTROL_WORD,
+	GROUP_OPEN,
+	GROUP_CLOSE
+};
+
+#define STR(...)\
+({char s[BUFSIZ]; sprintf(s, __VA_ARGS__); s;})
+
+static int is_style(char *buf)
 {
-	int ch = fgetc(fp);
-	char buf[BUFSIZ];
-
-	// read each char in text file
-	while (ch != EOF)
-	{
-		switch (ch) {
-			case '{':
-				//open group
-				CALLBACK(open_group, userdata, &ch)
-				break;
-			case '}':
-				//close group
-				CALLBACK(close_group, userdata, &ch)
-				break;
-			case '\\':
-				// try to get control_word
-				{
-					int l;
-					ch = read_control_word(ch, fp, buf, &l);
-					if (is_control_word(buf)){
-						CALLBACK(control_word, userdata, &ch, buf, l)
-					} else {
-						// check braces
-						if (ch == '{' || ch == '}'){
-							// handle them as anscii text
-							CALLBACK(anscii, userdata, ch)
-						} else if(ch == '\'') {
-							// this is 8-bit coded char
-							/* TODO: handle with 8-bit codepages */
-						} else {
-							/* TODO: handle other variants */
-						}
-					}
-				}
-				break;
-
-			default:
-				// handle as anscii
-				CALLBACK(anscii, userdata, ch)
-				break;
-		}
-	}
-
-	ch = fgetc(fp);
+	if (buf[0] == 's' && is_digit(buf[1]));
+		return 1;
 	return 0;
 }
 
-#define STR(...)
+struct style {
+	int n;
+	char value[64];
+};
 
 struct c_rtf_parser {
+	FILE *fp;
+	int ch;
 	void *userdata;
 	int (*paragraph_start)(void *userdata);
 	int (*paragraph_end)(void *userdata);
@@ -384,7 +351,145 @@ struct c_rtf_parser {
 	int (*style)(void *userdata, const char *style);
 	int (*text)(void *userdata, const char *text, int len);
 	int (*image)(void *userdata, const unsigned char *data, size_t len);
+	int level;
+	struct style *styles;
+	int nstyles;
 };
+
+void c_rtf_parser_init(struct c_rtf_parser *p)
+{
+	memset(p, 0, sizeof(struct c_rtf_parser));
+}
+
+static enum step
+parse_step(
+		struct c_rtf_parser *p, 
+		char *buf, int *len)
+{
+	switch (p->ch) {
+		case '{':
+			p->level++;
+			return GROUP_OPEN;
+		case '}':
+			//close group
+			p->level--;
+			return GROUP_CLOSE;
+		case '\\':
+			// try to get control_word
+			{
+				p->ch = read_control_word(
+						p->ch, p->fp, buf, len);
+				if (is_control_word(buf)){
+					return CONTROL_WORD;
+				} else {
+					// check braces
+					if (p->ch == '{' || p->ch == '}'){
+						// handle them as anscii text
+						return ASCII;
+					} else if(p->ch == '\'') {
+						// this is 8-bit coded char
+						/* TODO: handle with 8-bit codepages */
+					} else {
+						/* TODO: handle other variants */
+					}
+				}
+			}
+			break;
+
+		default:
+			// handle as anscii
+			return ASCII;
+			break;
+	}
+	p->ch = fgetc(p->fp);
+}
+
+static int 
+parse_styles(
+		struct c_rtf_parser *p, char *word)
+{
+	// table of styles
+	if (strcmp(word, "stylesheet") == 0)
+	{
+		int level = p->level;
+		char buf[BUFSIZ];
+		int len = 0;
+
+		// get styles
+		int style_level = 0;
+		while (level >= p->level) {
+			enum step step = 
+				parse_step(p, buf, &len);
+			if (step == GROUP_OPEN){
+				// add new style
+				style_level++;
+			}
+			if (step == CONTROL_WORD && style_level == 1){
+				if (is_style(buf)){
+					//this is style number
+					char *s = buf + 1;
+					p->styles[p->nstyles].n = atoi(s);
+				}
+				// this is style properties
+				strcat(
+						p->styles[p->nstyles].value, buf);
+			}
+			if (step == CONTROL_WORD && style_level == 1){
+				// this is style description
+				strcat(
+						p->styles[p->nstyles].value, buf);
+			}
+			if (step == GROUP_OPEN){
+				style_level--;
+				if (style_level == 0){
+					// iterate style
+					p->nstyles++;
+				}
+			}
+		}
+
+		return 1;
+	}
+	return 0;
+}
+
+static int 
+control_word_parser(
+		struct c_rtf_parser *p, char *buf, int len)
+{
+	if (parse_styles(p, buf))
+		return 0;
+	
+	return 0;
+}
+
+int c_rtf_parse_file(FILE *fp, struct c_rtf_parser *p)
+{
+	int ch = fgetc(fp);
+	char buf[BUFSIZ];
+	int len = 0;
+
+	p->fp = fp;
+
+	// read each char in text file
+	while (ch != EOF)
+	{
+		enum step step = 
+			parse_step(p, buf, &len);
+
+		if (step == CONTROL_WORD) {
+			// handle with control word
+			control_word_parser(p, buf, len);
+			continue;
+		}
+		
+		if (step == ASCII && p->level == 1){
+			// print chars
+			continue;;
+		}
+	}
+	return 0;
+}
 
 int c_rtf_parse(
 		const char *filename, 
@@ -393,6 +498,8 @@ int c_rtf_parse(
 	FILE *fp = fopen(filename, "r");
 	if (!fp)
 		perror(STR("fopen: %s", filename));
+
+	c_rtf_parse_file(fp, parser); 
 
 	return 0;
 }

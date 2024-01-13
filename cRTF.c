@@ -433,6 +433,7 @@ parse_step(
 		struct c_rtf_parser *p, 
 		char *buf, int *len)
 {
+	printf("%c ", p->ch);
 	switch (p->ch) {
 		case '{':
 			p->level++;
@@ -561,7 +562,7 @@ parse_text(
 			uint32_t u;
 			sscanf(unicode, "%u", &u);			
 
-			char s[5];
+			char s[7];
 			int l = c32tomb(s, u);
 			s[l] = 0;
 			CALLBACK(p->text, 1, p->userdata, s, l);
@@ -886,14 +887,14 @@ void parse_char(struct c_rtf_parser *p, char *buf, int len){
 
 int c_rtf_parse_file(FILE *fp, struct c_rtf_parser *p)
 {
-	int ch = fgetc(fp);
+	p->ch = fgetc(fp);
 	char buf[BUFSIZ];
 	int len = 0;
 
 	p->fp = fp;
 
 	// read each char in text file
-	while (ch != EOF)
+	while (p->ch != EOF)
 	{
 		parse_char(p, buf, len);
 	}

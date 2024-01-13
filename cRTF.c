@@ -27,7 +27,6 @@
  *
  */
 
-#include <cstdio>
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
@@ -319,7 +318,72 @@ enum step {
 
 static int is_style(char *buf)
 {
-	if (buf[0] == 's' && is_digit(buf[1]));
+	if (
+			buf[0] == '\\' && 
+			buf[1] == 's' && 
+			is_digit(buf[2]));
+		return 1;
+	return 0;
+}
+
+static int is_utf(char *buf)
+{
+	if (
+			buf[0] == '\\' && 
+			buf[1] == 'u'  &&
+			is_digit(buf[1])
+			)
+		return 1;
+	return 0;
+}
+
+static int is_li(char *buf)
+{
+	if (
+		buf[0] == '\\' &&
+		buf[1] == 'l' &&
+		buf[2] == 'i' &&
+		is_digit(buf[3])
+		)
+		return 1;
+	return 0;
+}
+
+static int is_fs(char *buf)
+{
+	if (
+		buf[0] == '\\' &&
+		buf[1] == 'f' &&
+		buf[2] == 's' &&
+		is_digit(buf[3])
+		)
+		return 1;
+	return 0;
+}
+
+static int is_list(char *buf)
+{
+	if (
+		buf[0] == '\\' &&
+		buf[1] == 'l' &&
+		buf[2] == 's' &&
+		is_digit(buf[3])
+		)
+		return 1;
+	return 0;
+}
+
+static int is_colwidth(char *buf)
+{
+	if (
+		buf[0] == '\\' &&
+		buf[1] == 'c' &&
+		buf[2] == 'e' &&
+		buf[3] == 'l' &&
+		buf[4] == 'l' &&
+		buf[5] == 'x' &&
+		is_digit(buf[6])
+		)
 		return 1;
 	return 0;
 }
@@ -327,11 +391,10 @@ static int is_style(char *buf)
 struct style {
 	int n;
 	char value[64];
+	char name[16];
 };
 
 struct c_rtf_parser {
-	FILE *fp;
-	int ch;
 	void *userdata;
 	int (*paragraph_start)(void *userdata);
 	int (*paragraph_end)(void *userdata);
@@ -351,6 +414,8 @@ struct c_rtf_parser {
 	int (*style)(void *userdata, const char *style);
 	int (*text)(void *userdata, const char *text, int len);
 	int (*image)(void *userdata, const unsigned char *data, size_t len);
+	FILE *fp;
+	int ch;
 	int level;
 	struct style *styles;
 	int nstyles;
@@ -360,6 +425,8 @@ void c_rtf_parser_init(struct c_rtf_parser *p)
 {
 	memset(p, 0, sizeof(struct c_rtf_parser));
 }
+
+void parse_char(struct c_rtf_parser *p, char *buf, int len);
 
 static enum step
 parse_step(
@@ -402,6 +469,7 @@ parse_step(
 			break;
 	}
 	p->ch = fgetc(p->fp);
+	return ASCII;
 }
 
 static int 
@@ -429,12 +497,33 @@ parse_styles(
 					//this is style number
 					char *s = buf + 1;
 					p->styles[p->nstyles].n = atoi(s);
-				}
+				} 
+
+				else if (strcmp(buf, "\\qc") == 0)
+					strcat(
+						p->styles[p->nstyles].name, "CENTER");
+				
+				else if (strcmp(buf, "\\qr") == 0)
+					strcat(
+						p->styles[p->nstyles].name, "RIGHT");
+				
+				else if (strcmp(buf, "\\ql") == 0)
+					strcat(
+						p->styles[p->nstyles].name, "LEFT");
+				
+				if (is_li(buf))
+					strcat(
+						p->styles[p->nstyles].name, "Q");
+				
+				if (is_list(buf))
+					strcat(
+						p->styles[p->nstyles].name, "LN");
+				
 				// this is style properties
 				strcat(
 						p->styles[p->nstyles].value, buf);
 			}
-			if (step == CONTROL_WORD && style_level == 1){
+			if (step == ASCII && style_level == 1){
 				// this is style description
 				strcat(
 						p->styles[p->nstyles].value, buf);
@@ -454,13 +543,345 @@ parse_styles(
 }
 
 static int 
+parse_text(
+		struct c_rtf_parser *p, char *buf, enum step step)
+{
+	if (step == CONTROL_WORD){
+		if (is_utf(buf)){
+			// hande utf text
+			char unicode[5] = 
+			{
+				buf[2], 
+				buf[3], 
+				buf[4], 
+				buf[5], 
+				0
+			};
+
+			uint32_t u;
+			sscanf(unicode, "%u", &u);			
+
+			char s[5];
+			int l = c32tomb(s, u);
+			s[l] = 0;
+			CALLBACK(p->text, 1, p->userdata, s, l);
+			return 1;
+		}
+		
+		if (strcmp(buf, "\\b") == 0){
+			CALLBACK((p->bold_start), 1, p->userdata);
+			return 1;
+		}
+		
+		if (strcmp(buf, "\\b0") == 0){
+			CALLBACK((p->bold_end), 1, p->userdata);
+			return 1;
+		}
+		
+		if (strcmp(buf, "\\i") == 0){
+			CALLBACK((p->italic_start), 1, p->userdata);
+			return 1;
+		}
+		
+		if (strcmp(buf, "\\i0") == 0){
+			CALLBACK((p->italic_end), 1, p->userdata);
+			return 1;
+		}
+		
+		if (strcmp(buf, "\\ul") == 0){
+			CALLBACK((p->underline_start), 1, p->userdata);
+			return 1;
+		}
+		
+		if (strcmp(buf, "\\ul0") == 0){
+			CALLBACK((p->underline_end), 1, p->userdata);
+			return 1;
+		}
+	}
+
+	if (step == ASCII){
+		// print text
+		char s[2];
+		s[0] = p->ch;
+		s[1] = 0;
+		CALLBACK(p->text, 1, p->userdata, s, 1);
+		return 1;
+	}
+	
+	return 0;
+}
+
+static int 
+parse_image(
+		struct c_rtf_parser *p, char *word)
+{
+	if (
+			strcmp(word, "\\pict") == 0 || 
+			strcmp(word, "\\shppict") == 0 
+			)
+	{
+		int inpicture = 0;
+
+		if (strcmp(word, "\\shppict") == 0){
+			// find pict
+			int level = p->level;
+			char buf[BUFSIZ];
+			int len = 0;
+
+			while (level >= p->level) {
+				enum step step = 
+					parse_step(p, buf, &len);
+				
+				if (step == CONTROL_WORD){
+					if (strcmp(buf, "\\pict") == 0){
+						inpicture = 1;
+						break;
+					}
+				}
+			}
+		} 
+
+		if (!inpicture)
+			return 1;
+		
+		// this is picture
+		// data will start after space or newline
+		int level = p->level;
+		char buf[BUFSIZ];
+		int len = 0;
+		while (level >= p->level) {
+			enum step step = 
+				parse_step(p, buf, &len);
+				
+			if (step == ASCII)
+				if (level == p->level)
+					if (is_hex(p->ch))
+						break;
+		}
+		
+		if (!is_hex(p->ch))
+			return 1;
+				
+		// get image data until '}'
+		struct str img;
+		str_init(&img, BUFSIZ);
+		p->ch = fgetc(p->fp);
+		while (p->ch != '}' && p->ch != EOF) {
+			char c = p->ch;
+			str_append(&img, &c, 1);
+			p->ch = fgetc(p->fp);
+		}
+		
+		if (p->ch == EOF)
+			return 1;
+
+		// convert image hex string to binary
+		size_t size = img.len/2;
+		unsigned char *data = 
+			(unsigned char*)malloc(size);
+		if (!data) // not enough memory
+			return 1;
+
+		char cur[3];
+		unsigned int val;
+		size_t i, l;
+		for (i = 0, l = 0; i < img.len;) {
+			cur[0] = img.str[i++];
+			cur[1] = img.str[i++];
+			cur[2] = 0;
+			sscanf(cur, "%x", &val);
+			data[l++] = (unsigned char)val;
+		}
+
+		// callback image data
+		CALLBACK(p->image, 1, p->userdata, data, size);
+
+		// free image data and string
+		free(data);
+		free(img.str);
+
+		// parse char in RTF
+		parse_char(p, buf, len);
+	}
+
+	return 0;
+}
+
+static int 
+parse_table(
+		struct c_rtf_parser *p, char *word)
+{
+	if (strcmp(word, "\\trowd") == 0)
+	{
+		CALLBACK((p->table_start), 1, p->userdata);
+		
+		int level = p->level;
+		char buf[BUFSIZ];
+		int len = 0;
+		
+		int istable = 1;
+		int row = 0;
+		int cell = 0;
+
+		int colwidth[512];
+		int ncolwidth = 0;
+					
+		CALLBACK((p->tablerow_start), 1, p->userdata, row);
+
+		while (level >= p->level) {
+			enum step step = 
+				parse_step(p, buf, &len);
+			if (step == CONTROL_WORD){
+				if (strcmp(buf, "\\lastrow") == 0){
+					CALLBACK((p->table_end), 1, p->userdata);
+					break;
+				}
+				if (strcmp(buf, "\\row") == 0){
+					CALLBACK((p->tablerow_end), 1, p->userdata, row);
+					row++;
+					cell = 0;
+					continue;
+				}
+				if (strcmp(buf, "\\intbl") == 0){
+					CALLBACK((p->tablecell_start), 1, p->userdata, cell);
+					continue;
+				}
+				if (strcmp(buf, "\\cell") == 0){
+					CALLBACK((p->tablecell_end), 1, p->userdata, cell);
+					cell++;
+					continue;
+				}
+				if (is_colwidth(buf)){
+					char *s = buf + 6;
+					colwidth[ncolwidth] = atoi(s);
+					CALLBACK((p->tablerow_width), 1, 
+							p->userdata, ncolwidth, colwidth[ncolwidth]);
+					ncolwidth++;
+					continue;
+				}
+			}
+			if (parse_text(p, buf, step))
+				continue;
+		}
+	}
+
+	return 0;
+}
+
+static int 
+parse_paragraph(
+		struct c_rtf_parser *p, char *word)
+{
+	if (strcmp(word, "\\pard") == 0)
+	{
+		CALLBACK((p->paragraph_start), 1, p->userdata);
+		
+		int level = p->level;
+		char buf[BUFSIZ];
+		int len = 0;
+
+		int par_level = 0;
+		while (level >= p->level) {
+			enum step step = 
+				parse_step(p, buf, &len);
+			
+			if (parse_text(p, buf, step))
+				continue;
+		
+			if (step == CONTROL_WORD){
+
+				if (strcmp(buf, "\\qc") == 0){
+					CALLBACK((p->style), 1, p->userdata, "CENTER");
+					continue;
+				}
+				
+				if (strcmp(buf, "\\ql") == 0){
+					CALLBACK((p->style), 1, p->userdata, "LEFT");
+					continue;
+				}
+				
+				if (strcmp(buf, "\\qr") == 0){
+					CALLBACK((p->style), 1, p->userdata, "RIGTH");
+					continue;
+				}
+				
+				if (is_li(buf)){
+					CALLBACK((p->style), 1, p->userdata, "Q");
+					continue;
+				}
+				
+				if (is_list(buf)){
+					CALLBACK((p->style), 1, p->userdata, "LN");
+					continue;
+				}
+
+				if (parse_image(p, buf))
+					continue;
+				
+				if (parse_table(p, buf))
+					continue;
+				
+				if (is_style(buf)){
+					// handle with slyles
+					char *s = buf + 1;
+					int n = atoi(s);
+					int i;
+					for (i = 0; i < p->nstyles; ++i) {
+						if (n == p->styles[i].n){
+							CALLBACK((p->style), 1, 
+									p->userdata, p->styles[i].name);
+							break;
+						}	
+					}
+					continue;
+				}
+				
+				if (strcmp(buf, "\\par") == 0){
+					// the end of paragraph
+					CALLBACK((p->paragraph_end), 1, p->userdata);
+					break;
+				}
+			}
+		}
+
+		return 1;
+	}
+	return 0;
+}
+
+static int 
 control_word_parser(
 		struct c_rtf_parser *p, char *buf, int len)
 {
 	if (parse_styles(p, buf))
 		return 0;
 	
+	if (parse_paragraph(p, buf))
+		return 0;
+	
+	if (parse_image(p, buf))
+		return 0;
+	
+	if (parse_table(p, buf))
+		return 0;
+	
 	return 0;
+}
+
+void parse_char(struct c_rtf_parser *p, char *buf, int len){
+		enum step step = 
+			parse_step(p, buf, &len);
+
+		if (step == CONTROL_WORD) {
+			// handle with control word
+			control_word_parser(p, buf, len);
+			return;
+		}
+		
+		if (step == ASCII && p->level == 1){
+			// print chars
+			return;
+		}
 }
 
 int c_rtf_parse_file(FILE *fp, struct c_rtf_parser *p)
@@ -474,19 +895,7 @@ int c_rtf_parse_file(FILE *fp, struct c_rtf_parser *p)
 	// read each char in text file
 	while (ch != EOF)
 	{
-		enum step step = 
-			parse_step(p, buf, &len);
-
-		if (step == CONTROL_WORD) {
-			// handle with control word
-			control_word_parser(p, buf, len);
-			continue;
-		}
-		
-		if (step == ASCII && p->level == 1){
-			// print chars
-			continue;;
-		}
+		parse_char(p, buf, len);
 	}
 	return 0;
 }

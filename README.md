@@ -1,1 +1,1 @@
-# c library to import/export RTF format
+# C library to import/export RTF format

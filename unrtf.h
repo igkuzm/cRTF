@@ -601,8 +601,8 @@ unrtf_parse_start:
 				_unrtf_str_append(&str, (char*)s,
 					 	strlen((char*)s));
 				
-				// if next char is space or ? - drop it
-				if (ch == ' ' || ch == '?')
+				// if next char is space - drop it
+				if (ch == ' ')
 					continue;
 			}
 

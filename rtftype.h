@@ -12,44 +12,77 @@
 #include <stdbool.h>
 #define fTrue 1
 #define fFalse 0
+
+/* Character Properties */
 typedef struct char_prop
 {
 		char fBold;
 		char fUnderline;
 		char fItalic;
-} CHP;                             // CHaracter Properties
-typedef enum {justL, justR, justC, justF } JUST;
+} CHP;               // CHaracter Properties
+
+
+/* Paragraph justification */
+typedef enum {
+	justL,             // left
+	justR,             // rigth
+	justC,             // center
+	justF              // full
+} JUST;
+
+/* Paragraph properties */
 typedef struct para_prop
 {
-		int xaLeft;                    // left indent in twips
-		int xaRight;                   // right indent in twips
-		int xaFirst;                   // first line indent in twips
-		JUST just;                     // justification
-} PAP;                             // PAragraph Properties
-typedef enum {sbkNon, sbkCol, sbkEvn, sbkOdd, sbkPg} SBK;
-typedef enum {pgDec, pgURom, pgLRom, pgULtr, pgLLtr} PGN;
+  int xaLeft;        // left indent in twips
+  int xaRight;       // right indent in twips
+	int xaFirst;       // first line indent in twips
+	JUST just;         // justification
+} PAP;               // PAragraph Properties
+
+/* Section break type */
+typedef enum {
+	sbkNon,            // No section break
+	sbkCol,            // Section starts a new column  
+	sbkEvn,            // Section starts at an even page  
+	sbkOdd,            // Section starts at an odd page 
+	sbkPg              // Section starts a new page (by Default)
+} SBK;
+
+/* Page number formating */
+typedef enum {
+	pgDec,             // Page-number format is decimal
+	pgURom,            // Page-number format is uppercase roman numeral 
+	pgLRom,            // Page-number format is lowercase roman numeral 
+	pgULtr,            // Page-number format is uppercase letter 
+	pgLLtr             // Page-number format is lowerrcase letter 
+} PGN;
+
+/* Section properties */
 typedef struct sect_prop
 {
-		int cCols;                     // number of columns
-		SBK sbk;                       // section break type
-		int xaPgn;                     // x position of page number in twips
-		int yaPgn;                     // y position of page number in twips
-		PGN pgnFormat;                 // how the page number is formatted
-} SEP;                             // SEction Properties
+		int cCols;       // number of columns
+		SBK sbk;         // section break type
+		int xaPgn;       // x position of page number in twips
+		int yaPgn;       // y position of page number in twips
+		PGN pgnFormat;   // how the page number is formatted
+} SEP;               // SEction Properties
+
+/* Document properties */
 typedef struct doc_prop
 {
-		int xaPage;                    // page width in twips
-		int yaPage;                    // page height in twips
-		int xaLeft;                    // left margin in twips
-		int yaTop;                     // top margin in twips
-		int xaRight;                   // right margin in twips
-		int yaBottom;                  // bottom margin in twips
-		int pgnStart;                  // starting page number in twips
-		char fFacingp;                 // facing pages enabled?
-		char fLandscape;               // landscape or portrait??
-} DOP;														 // DOcument Properties
-typedef enum { rdsNorm, rdsSkip } RDS;          // Rtf Destination State
-typedef enum { risNorm, risBin, risHex, risUTF } RIS;   // Rtf Internal State
+		int xaPage;      // page width in twips
+		int yaPage;      // page height in twips
+		int xaLeft;      // left margin in twips
+		int yaTop;       // top margin in twips
+		int xaRight;     // right margin in twips
+		int yaBottom;    // bottom margin in twips
+		int pgnStart;    // starting page number in twips
+		char fFacingp;   // facing pages enabled?
+		char fLandscape; // landscape or portrait??
+} DOP;							 // DOcument Properties
+
+typedef enum { rdsNorm, rdsSkip } RDS;       // Rtf Destination State
+typedef enum { risNorm, risBin, risHex} RIS; // Rtf Internal State
 typedef struct save                // property save structure
 {
 		struct save *pNext;            // next save
@@ -67,7 +100,7 @@ typedef enum    {ipropBold, ipropItalic, ipropUnderline, ipropLeftInd,
 								 ipropXaRight, ipropYaTop, ipropYaBottom, ipropPgnStart,
 								 ipropSbk, ipropPgnFormat, ipropFacingp, ipropLandscape,
 								 ipropJust, ipropPard, ipropPlain, ipropSectd,
-								 ipropMax } IPROP;
+								 ipropPar, ipropMax} IPROP;
 typedef enum {actnSpec, actnByte, actnWord} ACTN;
 typedef enum {propChp, propPap, propSep, propDop} PROPTYPE;
 typedef struct propmod
@@ -76,7 +109,7 @@ typedef struct propmod
 		PROPTYPE prop;             // structure containing value
 		int   offset;              // offset of value from base of structure
 } PROP;
-typedef enum {ipfnBin, ipfnHex, ipfnSkipDest, ipfnUTF } IPFN;
+typedef enum {ipfnBin, ipfnHex, ipfnSkipDest} IPFN;
 typedef enum {idestPict, idestSkip } IDEST;
 typedef enum {kwdChar, kwdDest, kwdProp, kwdSpec, kwdUTF, kwdLoch} KWD;
 typedef struct symbol

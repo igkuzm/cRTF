@@ -14,6 +14,7 @@
 #include "utf.h"
 int cGroup;
 bool fSkipDestIfUnk;
+bool isUTF;
 long cbBin;
 long lParam;
 RDS rds;
@@ -102,6 +103,18 @@ ecRtfParse(FILE *fp)
 					else {
 						if (ris != risHex)
 							return ecAssertion;
+						
+						if (isUTF){ // skip HEX if after UTF code
+							cNibble--;
+							if (!cNibble)
+							{
+								cNibble = 2;
+								b = 0;
+								ris = risNorm;
+							}
+							break;
+						}
+
 						b = b << 4;
 						if (isdigit(ch))
 							b += (char) ch - '0';
@@ -123,6 +136,7 @@ ecRtfParse(FILE *fp)
 						cNibble--;
 						if (!cNibble)
 						{
+							/* TODO: CODEPAGE */
 							if ((ec = ecParseChar(b)) != ecOK)
 								return ec;
 							cNibble = 2;
@@ -195,6 +209,7 @@ ecPopRtfState(void)
 	free(psaveOld);
 	return ecOK;
 }
+
 //
 // %%Function: ecParseRtfKeyword
 //
@@ -205,49 +220,64 @@ ecPopRtfState(void)
 int
 ecParseRtfKeyword(FILE *fp)
 {
-			int ch;
-			char fParam = fFalse;
-			char fNeg = fFalse;
-			int param = 0;
-			char *pch;
-			char szKeyword[30];
-		 char szParameter[20];
-		 szKeyword[0] = '\0';
-		 szParameter[0] = '\0';
-		 if ((ch = getc(fp)) == EOF)
-				 return ecEndOfFile;
-		 if (!isalpha(ch))                // a control symbol; no delimiter.
-		 {
-				 szKeyword[0] = (char) ch;
-				 szKeyword[1] = '\0';
-				 return ecTranslateKeyword(szKeyword, 0, fParam);
-		 }
-		 for (pch = szKeyword; isalpha(ch); ch = getc(fp))
-				 *pch++ = (char) ch;
-		 *pch = '\0';
-		 if (ch == '-')
-		 {
-				 fNeg    = fTrue;
-				 if ((ch = getc(fp)) == EOF)
-								return ecEndOfFile;
-		 }
-		 if (isdigit(ch))
-		 {
-				 fParam = fTrue;              // a digit after the control means we have a parameter
-				 for (pch = szParameter; isdigit(ch); ch = getc(fp))
-								*pch++ = (char) ch;
-				 *pch = '\0';
-				 param = atoi(szParameter);
-				 if (fNeg)
-								param = -param;
-				 lParam = atol(szParameter);
-				 if (fNeg)
-								param = -param;
-		 }
-		 if (ch != ' ')
-				 ungetc(ch, fp);
-		 return ecTranslateKeyword(szKeyword, param, fParam);
+	int ch;
+	char fParam = fFalse;
+	char fNeg = fFalse;
+	int param = 0;
+	char *pch;
+	char szKeyword[30];
+	char szParameter[20];
+	szKeyword[0] = '\0';
+	szParameter[0] = '\0';
+	
+	if ((ch = getc(fp)) == EOF)
+		return ecEndOfFile;
+		 
+	// a control symbol; no delimiter.
+	if (!isalpha(ch)) 
+	{
+		szKeyword[0] = (char) ch;
+		szKeyword[1] = '\0';
+		return ecTranslateKeyword(szKeyword, 0, fParam);
+	}
+		 
+	for (pch = szKeyword; isalpha(ch); ch = getc(fp))
+		*pch++ = (char) ch;
+		 
+	*pch = '\0';
+	if (ch == '-')
+	{
+		fNeg    = fTrue;
+		if ((ch = getc(fp)) == EOF)
+			return ecEndOfFile;
+	}
+
+	if (isdigit(ch))
+	{
+		// a digit after the control means we have a parameter
+		fParam = fTrue;
+		
+		for (pch = szParameter; isdigit(ch); ch = getc(fp))
+			*pch++ = (char) ch;
+				 
+		*pch = '\0';
+		param = atoi(szParameter);
+		
+		if (fNeg)
+			param = -param;
+				 
+		lParam = atol(szParameter);
+		
+		if (fNeg)
+			param = -param;
+	}
+	
+	if (ch != ' ')
+		ungetc(ch, fp);
+		 
+	return ecTranslateKeyword(szKeyword, param, fParam);
 }
+
 //
 // %%Function: ecParseChar
 //
@@ -256,21 +286,23 @@ ecParseRtfKeyword(FILE *fp)
 int
 ecParseChar(int ch)
 {
-			if (ris == risBin && --cbBin <= 0)
-					ris = risNorm;
-			switch (rds)
-			{
-			case rdsSkip:
-					// Toss this character.
-					return ecOK;
-			case rdsNorm:
-					// Output a character. Properties are valid at this point.
-					return ecPrintChar(ch);
-			default:
+	if (ris == risBin && --cbBin <= 0)
+		ris = risNorm;
+	switch (rds)
+	{
+		case rdsSkip:
+			// Toss this character.
+			return ecOK;
+		case rdsNorm:
+			// Output a character. Properties are valid at this point.
+			return ecPrintChar(ch);
+			
+		default:
 			// handle other destinations....
-					return ecOK;
-			}
+			return ecOK;
+	}
 }
+
 //
 // %%Function: ecParseUTF
 //
@@ -279,13 +311,13 @@ ecParseChar(int ch)
 int
 ecParseUTF(int ch)
 {
-	ris = risUTF;	
+	isUTF = fTrue; 
 	// Output a character. Properties are valid at this point.
 	int i;
 	char s[6];
 	int len = c32tomb(s, ch);
 	for (i = 0; i < len; ++i) {
-		ecPrintChar(s[i]);
+		ecParseChar(s[i]);
 	}	
 	return ecOK;
 }

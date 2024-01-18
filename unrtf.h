@@ -2,7 +2,7 @@
  * File              : unrtf.h
  * Author            : Igor V. Sementsov <ig.kuzm@gmail.com>
  * Date              : 16.01.2024
- * Last Modified Date: 16.01.2024
+ * Last Modified Date: 17.01.2024
  * Last Modified By  : Igor V. Sementsov <ig.kuzm@gmail.com>
  */
 /**
@@ -34,10 +34,24 @@
 
 typedef struct unrtf_control_word {
 	/* data */
-	int   np;     // numeric parameter
-	int	  hp;			// 1 if has numeric parameter 
+	char  *np;    // numeric parameter or NULL
 	char  cw[64]; // control word (null-terminated string)
 } cw_t;
+
+/*! \enum UNRTF_CH
+ *
+ *  character from rtf parse
+ */
+enum UNRTF_CH { 
+	UNRTF_OB,     // open braces '{'
+	UNRTF_CB,     // close braces '}'
+	UNRTF_ASCII,  // ANSI char
+	UNRTF_CW,     // Control Word
+	UNRTF_CS,     // Control Symbol
+	UNRTF_UTF8,   // utf8 coded multybite char
+	UNRTF_CP,     // codepage coded 8-bit char
+	UNRTF_BIN,    // binary data
+};
 
 /* return 1 if lowercase alphabetic characters between ‘a’
  * and ‘z’ inclusive */
@@ -68,10 +82,9 @@ static int _unrtf_read_cw(
 	if (*ch != '\\')
 		return 0;
 
-	*cw = {0,0,0};
+	*cw = {NULL, 0};
 
-	char *npp; // pointer to numeric parameter in control word
-	int i, l=0;
+	int i, l=0, hp = 0;
 	// iterate chars
 	for (i = 0; i < 64; ++i) {
 		*ch = fgetc(fp);	
@@ -87,18 +100,11 @@ static int _unrtf_read_cw(
 
 			// add pointer of numeric parameter to buffer
 			// if not set
-			if (!cw->hp)
-				npp = &(cw->cw[l]);
-			cw->hp = 1;
+			if (hp)
+				cw->np = &(cw->cw[l]);
+			hp = 1;
 			
 			// add numeric parameter to buffer
-			cw->cw[l++] = *ch;
-			continue;
-		}
-
-		if (*ch == '*' or *ch == '\'') {
-			// according to RTF-Spec it is not a control word,
-			// but we stay it here as if
 			cw->cw[l++] = *ch;
 			continue;
 		}
@@ -112,11 +118,7 @@ static int _unrtf_read_cw(
 
 		/* stop the loop */
 		// null-terminate string
-		cw->cw[l++] = 0;
-
-		// set numeric parameter if exists
-		if (cw->hp)
-			cw->np = atoi(npp);
+		cw->cw[l] = 0;
 
 		// check if we have control word
 		if (cw->cw[0] != 0)
@@ -126,30 +128,36 @@ static int _unrtf_read_cw(
 	}
 
 	// buffer overload
-	*cw = {0,0,0};
+	*cw = {NULL,0,};
 	return 0;
 }
 
 /* parse RTF file */
-static int 
-unrtf_parse(FILE *fp, cw_t *cw, char *buf, int *blen)
+static UNRTF_CH 
+unrtf_parse(
+		FILE *fp, int *ch, unsigned char value[64])
 {
-	int ch, l = 0;
-	buf[0] = 0;
-	ch = fgetc(fp);
+	int l = 0;
+	value[0] = 0;
+	*ch = fgetc(fp);
 
-	if (ch == '\\'){
-		if (_unrtf_read_cw(fp, &ch, cw)){
-			
-		} else {
+	if (*ch == '{')
+		return UNRTF_CB;
+	
+	if (*ch == '}')
+		return UNRTF_CB;
+	
+
+	if (*ch == '\\'){
+		if (_unrtf_read_cw(fp, ch, (cw_t*)value)){
+			return UNRTF_CW;	
+		} 
+		else {
 			// if it is '\\{' or '\\}' simbol - use them as text
-			if (ch == '{' || ch == '}'){
-				buf[l++] = ch;
-				buf[l] = 0;
-				if (blen)
-					*blen = l;
-				ch = fgetc(fp);
-				return ch;
+			if (*ch == '{' || *ch == '}'){
+				value[l++] = *ch;
+				*ch = fgetc(fp);
+				return UNRTF_ASCII;
 			}
 		}
 	} else {

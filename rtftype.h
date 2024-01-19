@@ -79,7 +79,6 @@ typedef struct para_prop
   int xaRight;       // right indent in twips
 	int xaFirst;       // first line indent in twips
 	JUST just;         // justification
-	int font;          // font 
 	int s;             // paragraph style 
 } PAP;               // PAragraph Properties
 
@@ -190,7 +189,6 @@ typedef struct doc_prop
 	int   deflang;    // Default language
 	int   deff;       // Default font
 	int   defftab;    // Default tab width
-	int   cpg;        // codepage
 	int   version;    // document version
 	int   vern;       // internal version
 	int   emin;       // Total editing time (in minutes) 

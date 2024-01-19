@@ -115,6 +115,9 @@ typedef enum {
 	ipropNofchars,
 	ipropNofcharsws,
 	ipropId,
+	ipropFsize,
+	ipropFfcolor,
+	ipropFbcolor,
 	
 	ipropMax
 } IPROP;
@@ -233,7 +236,7 @@ PROP rgprop [ipropMax] = {
 		 actnWord,   propFnt,       offsetof(FONT, charset),              // ipropFcharset
 		 actnWord,   propFnt,       offsetof(FONT, fprq),                 // ipropFprq
 		 actnByte,   propFnt,       offsetof(FONT, ftype),                // ipropFtype
-		 actnWord,   propFnt,       offsetof(FONT, num),                  // ipropFnum
+		 actnSpec,   propFnt,       0,                                    // ipropFnum
 		 actnWord,   propCol,       offsetof(COLOR, red),                 // ipropCred
 		 actnWord,   propCol,       offsetof(COLOR, green),               // ipropCgreen
 		 actnWord,   propCol,       offsetof(COLOR, blue),                // ipropCblue
@@ -265,6 +268,9 @@ PROP rgprop [ipropMax] = {
 		 actnWord,   propDop,      offsetof(DOP, nchars),                // ipropNofchars
 		 actnWord,   propDop,      offsetof(DOP, ncharsws),                // ipropNofcharsws
 		 actnWord,   propDop,      offsetof(DOP, id),                // ipropId
+		 actnWord,   propChp,      offsetof(CHP, size),                // ipropFsize
+		 actnWord,   propChp,      offsetof(CHP, fcolor),                // ipropFfcolor
+		 actnWord,   propChp,      offsetof(CHP, bcolor),                // ipropFbcolor
 };
 
 // Keyword descriptions
@@ -294,6 +300,9 @@ SYM rgsymRtf[] = {
 	   "dy",         0,         fFalse,     kwdProp,         ipropDay,
 	   "emfblip",    pict_emf,  fTrue,      kwdProp,         ipropPicttype,
 	   "f",          0,         fFalse,     kwdProp,         ipropFnum,
+	   "fs",          0,         fFalse,     kwdProp,         ipropFsize,
+	   "cf",          0,         fFalse,     kwdProp,         ipropFfcolor,
+	   "cb",          0,         fFalse,     kwdProp,         ipropFbcolor,
 	   "facingp",    1,         fTrue,      kwdProp,         ipropFacingp,
 	   "falt",       0,         fFalse,     kwdDest,         idestFalt,
 	   "fbidi",      fbidi,     fTrue,      kwdProp,         ipropFfam,
@@ -577,6 +586,13 @@ ecParseSpecialProperty(IPROP iprop, int val)
 			return ecOK;
 		
 		case ipropUd:  // we can read utf (use \ud and skip \udr)
+			return ecOK;
+		
+		case ipropFnum:
+			if (rds == rdsFonttbl)
+				fnt.num = val;
+			else
+				prop->chp.font = val;
 			return ecOK;
 		
 		case ipropPar:

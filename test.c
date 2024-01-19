@@ -9,6 +9,18 @@
 #include <stdio.h>
 #include "rtfreadr.h"
 
+int style_cb(void *d, STYLE *f)
+{
+	printf("%d. %s\n", f->s, f->name);
+	return 0;
+}
+
+int font_cb(void *d, FONT *f)
+{
+	printf("%d. %s\n", f->num, f->name);
+	return 0;
+}
+
 int char_cb(void *d, int ch)
 {
 	putchar(ch);
@@ -17,7 +29,7 @@ int char_cb(void *d, int ch)
 
 int par_cb(void *d)
 {
-	putchar('\n');
+	printf("par\n");
 	return 0;
 }
 
@@ -33,7 +45,10 @@ int main(int argc, char *argv[])
 
 	rprop_t p;
 	rnotify_t n;
-	n.char_cb = char_cb;
+	//n.font_cb = font_cb;
+	//n.char_cb = char_cb;
+	//n.par_cb = par_cb;
+	//n.style_cb = style_cb;
 	n.par_cb = par_cb;
 
 	if (argc < 2)
@@ -51,6 +66,9 @@ int main(int argc, char *argv[])
 	else
 		printf("Parsed RTF file OK\n");
 	fclose(fp);
+
+	printf("Author: %s\n", p.dop.info->author);
+	printf("Title: %s\n", p.dop.info->title);
 	
 	return 0;
 }

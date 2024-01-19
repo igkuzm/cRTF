@@ -33,18 +33,20 @@ typedef enum {
 } FPCH;
 
 typedef struct font {
-	int  n;            // font number
+	int  num;          // font number
 	char name[64];     // font name
-	FFAM ffam;
+	int  lname;        // len of name
+	FFAM ffam;         // font family
 	int  charset;      //
 	int	 falt[64];     // alternative font 
+	int  lfalt;        // len of falt
 	FPCH fprq;         // Specifies the pitch of a font in the font table. 
-	char truetype;
+	char ftype;        // font type (nil/truetype)
+	int  cpg;          // codepage
 } FONT;
 
 /* colors */
 typedef struct color {
-	int  n;            // color number
 	char red;          // 0-255
 	char green;        // 0-255
 	char blue;         // 0-255
@@ -78,6 +80,7 @@ typedef struct para_prop
 	int xaFirst;       // first line indent in twips
 	JUST just;         // justification
 	int font;          // font 
+	int s;             // paragraph style 
 } PAP;               // PAragraph Properties
 
 /* Section break type */
@@ -106,6 +109,7 @@ typedef struct sect_prop
 	int xaPgn;        // x position of page number in twips
 	int yaPgn;        // y position of page number in twips
 	PGN pgnFormat;    // how the page number is formatted
+	int ds;           // section style
 } SEP;              // SEction Properties
 
 
@@ -162,6 +166,19 @@ typedef enum {
 	charset_pca
 } CHSET;
 
+typedef struct rtf_info {
+	/* data */
+	char  title[32];  // document title
+	int   ltitle;     // length of title
+	char  author[32]; // document author
+	int   lauthor;    // length of author string
+	int   year;
+	int   month;
+	int   day;
+	int   hour;
+	int   min;
+} INFO;
+
 /* Document properties */
 typedef struct doc_prop
 {
@@ -179,6 +196,36 @@ typedef struct doc_prop
 	int   defftab;    // Default tab width
 	int   cpg;        // codepage
 	CHSET chset;      // charset
+	INFO  *info;      // Document info
 } DOP;							// DOcument Properties
+
+typedef	struct style {
+	int s;           // paragraph style
+	int ds;          // section style
+	int sbedeon;     // based on style
+	int next;        // next style
+	char hidden;
+	char name[64];     // style name
+	int  lname;        // len of name
+	CHP chp;
+	PAP pap;
+	SEP sep;
+} STYLE;
+
+// picture type
+typedef	enum {
+	pict_emf,     //
+	pict_png,     //
+	pict_jpg,     //
+	pict_mac,     // Source of the picture is QuickDraw
+	pict_wmf,     // 
+	pict_omf,     // Source of the picture is an OS/2 metafile
+	pict_ibitmap, // Source of the picture is a Windows device-independent bitmap 
+	pict_dbitmap, // Source of the picture is a Windows device-dependent bitmap 
+} PICT_T;
+
+typedef struct picture {
+						
+} PICT;
 
 #endif

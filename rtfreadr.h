@@ -2,8 +2,8 @@
  * File              : rtfreadr.h
  * Author            : Igor V. Sementsov <ig.kuzm@gmail.com>
  * Date              : 18.01.2024
- * Last Modified Date: 18.01.2024
- * Last Modified By  : Igor V. Sementsov <ig.kuzm@gmail.com>
+ * Last Modified Date: 19.01.2024
+ Title Modified By  : Igor V. Sementsov <ig.kuzm@gmail.com>
  */
 
 #include <stdio.h>
@@ -21,14 +21,15 @@ typedef	struct rtfprop {
 
 typedef struct rtfnotify {
 	void *udata;
-	int (*font_cb)(void *udata, FONT p);
-	int (*color_cb)(void *udata, COLOR p);
+	int (*font_cb)(void *udata, FONT *p);
+	int (*style_cb)(void *udata, STYLE *s);
+	int (*color_cb)(void *udata, COLOR *c);
 	int (*sect_cb)(void *udata);
 	int (*par_cb)(void *udata);
 	int (*row_cb)(void *udata);
 	int (*cell_cb)(void *udata);
 	int (*char_cb)(void *udata, int ch);
-	int (*image_cb) (void *udata, void *data, int len);
+	int (*picture_cb) (void *udata, void *data, int len);
 } rnotify_t;
 
 /* parse RTF file and run callbacks */

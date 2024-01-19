@@ -17,7 +17,16 @@
 
 typedef enum { 
 	rdsNorm, 
-	rdsSkip 
+	rdsFonttbl, 
+	rdsFalt, 
+	rdsColor, 
+	rdsSkip,
+	rdsStyle,
+	rdsInfo,
+	rdsTitle,
+	rdsAuthor,
+	rdsShppict,
+	rdsPict,
 } RDS;                    // Rtf Destination State
 
 typedef enum { 
@@ -38,7 +47,6 @@ typedef struct save       // property save structure
 	TRP trp;
 	TCP tcp;
 } SAVE;
-
 // What types of properties are there?
 typedef enum {
 	ipropBold, 
@@ -71,6 +79,21 @@ typedef enum {
 	ipropSect, 
 	ipropRow, 
 	ipropCell, 
+	ipropFcharset,
+	ipropFprq,
+	ipropFtype,
+	ipropFnum,
+	ipropCred,
+	ipropCgreen,
+	ipropCblue,
+	ipropFfam,
+	ipropStyle,
+	ipropDStyle,
+	ipropYear,
+	ipropMonth,
+	ipropDay,
+	ipropHour,
+	ipropMin,
 	
 	ipropMax
 } IPROP;
@@ -88,6 +111,9 @@ typedef enum {
 	propDop,
 	propTrp,
 	propTcp,
+	propFnt,
+	propCol,
+	propInfo,
 } PROPTYPE;
 
 typedef struct propmod
@@ -105,7 +131,16 @@ typedef enum {
 
 typedef enum {
 	idestPict, 
-	idestSkip 
+	idestSkip,
+	idestFnt,
+	idestCol,
+	idestFalt,
+	idestStyle,
+	idestInfo,
+	idestTitle,
+	idestAuthor,
+	idestCreatim,
+	idestShppict,
 } IDEST;
 
 typedef enum {
@@ -126,35 +161,6 @@ typedef struct symbol
 													 // index into destination table if kwd == kwdDest
 													 // character to print if kwd == kwdChar
 } SYM;
-
-// Parser vars
-int cGroup;
-bool fSkipDestIfUnk;
-bool isUTF;
-long cbBin;
-long lParam;
-RDS rds;
-RIS ris;
-SAVE *psave;
-FILE *fpIn;
-
-rprop_t *prop;
-rnotify_t *no;
-
-// RTF parser declarations
-int ecPushRtfState(void);
-int ecPopRtfState(void);
-int ecParseRtfKeyword(FILE *fp);
-int ecParseChar(int c);
-int ecParseUTF(int c);
-int ecTranslateKeyword(char *szKeyword, int param, bool fParam);
-int ecPrintChar(int ch);
-int ecEndGroupAction(RDS rds);
-int ecApplyPropChange(IPROP iprop, int val);
-int ecChangeDest(IDEST idest);
-int ecParseSpecialKeyword(IPFN ipfn);
-int ecParseSpecialProperty(IPROP iprop, int val);
-int ecParseHexByte(void);
 
 // RTF parser tables
 // Property descriptions
@@ -186,101 +192,211 @@ PROP rgprop [ipropMax] = {
 		 actnSpec,   propSep,       0,                                    // ipropPar
 		 actnSpec,   propSep,       0,                                    // ipropTrowd
 		 actnSpec,   propSep,       0,                                    // ipropTcelld
-		 actnSpec,   propSep,       0,                                    // ipropTcelld
+		 actnSpec,   propSep,       0,                                    // ipropSect
 		 actnSpec,   propSep,       0,                                    // ipropRow
 		 actnSpec,   propSep,       0,                                    // ipropCell
+		 actnWord,   propFnt,       offsetof(FONT, charset),              // ipropFcharset
+		 actnWord,   propFnt,       offsetof(FONT, fprq),                 // ipropFprq
+		 actnByte,   propFnt,       offsetof(FONT, ftype),                // ipropFtype
+		 actnWord,   propFnt,       offsetof(FONT, num),                  // ipropFnum
+		 actnWord,   propCol,       offsetof(COLOR, red),                 // ipropCred
+		 actnWord,   propCol,       offsetof(COLOR, green),               // ipropCgreen
+		 actnWord,   propCol,       offsetof(COLOR, blue),                // ipropCblue
+		 actnByte,   propFnt,       offsetof(FONT,  ffam),                // ipropFfam
+		 actnSpec,   propPap,       0,                                    // ipropStyle
+		 actnSpec,   propSep,       0,                                    // ipropDStyle
+		 actnWord,   propInfo,      offsetof(INFO, year),                 // ipropYear
+		 actnWord,   propInfo,      offsetof(INFO, month),                // ipropMonth
+		 actnWord,   propInfo,      offsetof(INFO, day),                  // ipropDay
+		 actnWord,   propInfo,      offsetof(INFO, hour),                 // ipropHour
+		 actnWord,   propInfo,      offsetof(INFO, min),                  // ipropMin
 };
 
 // Keyword descriptions
 SYM rgsymRtf[] = {
-//   keyword      dflt       fPassDflt   kwd              idx
-		 "b",         1,         fFalse,     kwdProp,         ipropBold,
-		 "ul",        1,         fFalse,     kwdProp,         ipropUnderline,
-		 "i",         1,         fFalse,     kwdProp,         ipropItalic,
-	   "li",        0,         fFalse,     kwdProp,         ipropLeftInd,
-	   "ri",        0,         fFalse,     kwdProp,         ipropRightInd,
-	   "fi",        0,         fFalse,     kwdProp,         ipropFirstInd,
-	   "cols",      1,         fFalse,     kwdProp,         ipropCols,
-	   "sbknone",   sbkNon,    fTrue,      kwdProp,         ipropSbk,
-	   "sbkcol",    sbkCol,    fTrue,      kwdProp,         ipropSbk,
-	   "sbkeven",   sbkEvn,    fTrue,      kwdProp,         ipropSbk,
-	   "sbkodd",    sbkOdd,    fTrue,      kwdProp,         ipropSbk,
-	   "sbkpage",   sbkPg,     fTrue,      kwdProp,         ipropSbk,
-	   "pgnx",      0,         fFalse,     kwdProp,         ipropPgnX,
-	   "pgny",      0,         fFalse,     kwdProp,         ipropPgnY,
-	   "pgndec",    pgDec,     fTrue,      kwdProp,         ipropPgnFormat,
-	   "pgnucrm",   pgURom,    fTrue,      kwdProp,         ipropPgnFormat,
-	   "pgnlcrm",   pgLRom,    fTrue,      kwdProp,         ipropPgnFormat,
-	   "pgnucltr",  pgULtr,    fTrue,      kwdProp,         ipropPgnFormat,
-	   "pgnlcltr",  pgLLtr,    fTrue,      kwdProp,         ipropPgnFormat,
-	   "qc",        justC,     fTrue,      kwdProp,         ipropJust,
-	   "ql",        justL,     fTrue,      kwdProp,         ipropJust,
-	   "qr",        justR,     fTrue,      kwdProp,         ipropJust,
-	   "qj",        justF,     fTrue,      kwdProp,         ipropJust,
-	   "paperw",    12240,     fFalse,     kwdProp,         ipropXaPage,
-	   "paperh",    15480,     fFalse,     kwdProp,         ipropYaPage,
-	   "margl",     1800,      fFalse,     kwdProp,         ipropXaLeft,
-	   "margr",     1800,      fFalse,     kwdProp,         ipropXaRight,
-	   "margt",     1440,      fFalse,     kwdProp,         ipropYaTop,
-	   "margb",     1440,      fFalse,     kwdProp,         ipropYaBottom,
-	   "pgnstart",  1,         fTrue,      kwdProp,         ipropPgnStart,
-	   "facingp",   1,         fTrue,      kwdProp,         ipropFacingp,
-	   "landscape", 1,         fTrue,      kwdProp,         ipropLandscape,
-	   "par",       0,         fFalse,     kwdProp,         ipropPar,
-	   "pard",      0,         fFalse,     kwdProp,         ipropPard,
-	   "\0x0a",     0,         fFalse,     kwdChar,         0x0a,
-	   "\0x0d",     0,         fFalse,     kwdChar,         0x0a,
-	   "tab",       0,         fFalse,     kwdChar,         0x09,
-	   "trowd",     0,         fFalse,     kwdProp,         ipropTrowd,
-	   "tcelld",    0,         fFalse,     kwdProp,         ipropTcelld,
-	   "ldblquote", 0,         fFalse,     kwdChar,         '"',
-	   "rdblquote", 0,         fFalse,     kwdChar,         '"',
-	   "bin",       0,         fFalse,     kwdSpec,         ipfnBin,
-	   "*",         0,         fFalse,     kwdSpec,         ipfnSkipDest,
-	   "'",         0,         fFalse,     kwdSpec,         ipfnHex,
-	   "author",    0,         fFalse,     kwdDest,         idestSkip,
-	   "buptim",    0,         fFalse,     kwdDest,         idestSkip,
-	   "colortbl",  0,         fFalse,     kwdDest,         idestSkip,
-	   "comment",   0,         fFalse,     kwdDest,         idestSkip,
-	   "creatim",   0,         fFalse,     kwdDest,         idestSkip,
-	   "doccomm",   0,         fFalse,     kwdDest,         idestSkip,
-	   "fonttbl",   0,         fFalse,     kwdDest,         idestSkip,
-	   "footer",    0,         fFalse,     kwdDest,         idestSkip,
-	   "footerf",   0,         fFalse,     kwdDest,         idestSkip,
-	   "footerl",   0,         fFalse,     kwdDest,         idestSkip,
-	   "footerr",   0,         fFalse,     kwdDest,         idestSkip,
-	   "footnote",  0,         fFalse,     kwdDest,         idestSkip,
-	   "ftncn",     0,         fFalse,     kwdDest,         idestSkip,
-	   "ftnsep",    0,         fFalse,     kwdDest,         idestSkip,
-	   "ftnsepc",   0,         fFalse,     kwdDest,         idestSkip,
-	   "header",    0,         fFalse,     kwdDest,         idestSkip,
-	   "headerf",   0,         fFalse,     kwdDest,         idestSkip,
-	   "headerl",   0,         fFalse,     kwdDest,         idestSkip,
-	   "headerr",   0,         fFalse,     kwdDest,         idestSkip,
-	   "info",      0,         fFalse,     kwdDest,         idestSkip,
-	   "keywords",  0,         fFalse,     kwdDest,         idestSkip,
-	   "operator",  0,         fFalse,     kwdDest,         idestSkip,
-	   "pict",      0,         fFalse,     kwdDest,         idestSkip,
-	   "printim",   0,         fFalse,     kwdDest,         idestSkip,
-	   "private1",  0,         fFalse,     kwdDest,         idestSkip,
-	   "revtim",    0,         fFalse,     kwdDest,         idestSkip,
-	   "rxe",       0,         fFalse,     kwdDest,         idestSkip,
-	   "sect",      0,         fFalse,     kwdProp,         ipropSect,
-	   "stylesheet",0,         fFalse,     kwdDest,         idestSkip,
-	   "subject",   0,         fFalse,     kwdDest,         idestSkip,
-	   "tc",        0,         fFalse,     kwdDest,         idestSkip,
-	   "title",     0,         fFalse,     kwdDest,         idestSkip,
-	   "txe",       0,         fFalse,     kwdDest,         idestSkip,
-	   "u",         0,         fFalse,     kwdUTF,          0,
-	   "xe",        0,         fFalse,     kwdDest,         idestSkip,
-	   "{",         0,         fFalse,     kwdChar,         '{',
-	   "}",         0,         fFalse,     kwdChar,         '}',
-	   "\\",        0,         fFalse,     kwdChar,         '\\',
-	   "row",       0,         fFalse,     kwdProp,         ipropRow,
-	   "cell",      0,         fFalse,     kwdProp,         ipropCell,
+//   keyword       dflt       fPassDflt   kwd              idx
+		 "b",          1,         fFalse,     kwdProp,         ipropBold,
+		 "ds",         0,         fFalse,     kwdProp,         ipropDStyle,
+		 "i",          1,         fFalse,     kwdProp,         ipropItalic,
+		 "s",          0,         fFalse,     kwdProp,         ipropStyle,
+		 "ul",         1,         fFalse,     kwdProp,         ipropUnderline,
+	   "'",          0,         fFalse,     kwdSpec,         ipfnHex,
+	   "*",          0,         fFalse,     kwdSpec,         ipfnSkipDest,
+	   "\0x0a",      0,         fFalse,     kwdChar,         0x0a,
+	   "\0x0d",      0,         fFalse,     kwdChar,         0x0a,
+	   "\\",         0,         fFalse,     kwdChar,         '\\',
+	   "author",     0,         fFalse,     kwdDest,         idestAuthor,
+	   "bin",        0,         fFalse,     kwdSpec,         ipfnBin,
+	   "blue",       0,         fFalse,     kwdProp,         ipropCblue,
+	   "buptim",     0,         fFalse,     kwdDest,         idestSkip,
+	   "cell",       0,         fFalse,     kwdProp,         ipropCell,
+	   "colortbl",   0,         fFalse,     kwdDest,         idestCol,
+	   "cols",       1,         fFalse,     kwdProp,         ipropCols,
+	   "comment",    0,         fFalse,     kwdDest,         idestSkip,
+	   "creatim",    0,         fFalse,     kwdDest,         idestCreatim,
+	   "doccomm",    0,         fFalse,     kwdDest,         idestSkip,
+	   "dy",         0,         fFalse,     kwdProp,         ipropDay,
+	   "f",          0,         fFalse,     kwdProp,         ipropFnum,
+	   "facingp",    1,         fTrue,      kwdProp,         ipropFacingp,
+	   "falt",       0,         fFalse,     kwdDest,         idestFalt,
+	   "fbidi",      fbidi,     fTrue,      kwdProp,         ipropFfam,
+	   "fcharset",   0,         fFalse,     kwdProp,         ipropFcharset,
+	   "fdecor",     fdecor,    fTrue,      kwdProp,         ipropFfam,
+	   "fi",         0,         fFalse,     kwdProp,         ipropFirstInd,
+	   "fmodern",    fmodern,   fTrue,      kwdProp,         ipropFfam,
+	   "fnil",       fnil,      fTrue,      kwdProp,         ipropFfam,
+	   "fonttbl",    0,         fFalse,     kwdDest,         idestFnt,
+	   "footer",     0,         fFalse,     kwdDest,         idestSkip,
+	   "footerf",    0,         fFalse,     kwdDest,         idestSkip,
+	   "footerl",    0,         fFalse,     kwdDest,         idestSkip,
+	   "footerr",    0,         fFalse,     kwdDest,         idestSkip,
+	   "footnote",   0,         fFalse,     kwdDest,         idestSkip,
+	   "fprq",       0,         fFalse,     kwdProp,         ipropFprq,
+	   "froman",     froman,    fTrue,      kwdProp,         ipropFfam,
+	   "fscript",    fscript,   fTrue,      kwdProp,         ipropFfam,
+	   "fswiss",     fswiss,    fTrue,      kwdProp,         ipropFfam,
+	   "ftech",      ftech,     fTrue,      kwdProp,         ipropFfam,
+	   "ftncn",      0,         fFalse,     kwdDest,         idestSkip,
+	   "ftnsep",     0,         fFalse,     kwdDest,         idestSkip,
+	   "ftnsepc",    0,         fFalse,     kwdDest,         idestSkip,
+	   "fttruetype", 1,         fFalse,     kwdProp,         ipropFtype,
+	   "green",      0,         fFalse,     kwdProp,         ipropCgreen,
+	   "header",     0,         fFalse,     kwdDest,         idestSkip,
+	   "headerf",    0,         fFalse,     kwdDest,         idestSkip,
+	   "headerl",    0,         fFalse,     kwdDest,         idestSkip,
+	   "headerr",    0,         fFalse,     kwdDest,         idestSkip,
+	   "hr",         0,         fFalse,     kwdProp,         ipropHour,
+	   "info",       0,         fFalse,     kwdDest,         idestInfo,
+	   "keywords",   0,         fFalse,     kwdDest,         idestSkip,
+	   "landscape",  1,         fTrue,      kwdProp,         ipropLandscape,
+	   "ldblquote",  0,         fFalse,     kwdChar,         '"',
+	   "li",         0,         fFalse,     kwdProp,         ipropLeftInd,
+	   "margb",      1440,      fFalse,     kwdProp,         ipropYaBottom,
+	   "margl",      1800,      fFalse,     kwdProp,         ipropXaLeft,
+	   "margr",      1800,      fFalse,     kwdProp,         ipropXaRight,
+	   "margt",      1440,      fFalse,     kwdProp,         ipropYaTop,
+	   "min",        0,         fFalse,     kwdProp,         ipropMin,
+	   "mo",         0,         fFalse,     kwdProp,         ipropMonth,
+	   "noshppict",  0,         fFalse,     kwdDest,         idestSkip,
+	   "operator",   0,         fFalse,     kwdDest,         idestSkip,
+	   "paperh",     15480,     fFalse,     kwdProp,         ipropYaPage,
+	   "paperw",     12240,     fFalse,     kwdProp,         ipropXaPage,
+	   "par",        0,         fFalse,     kwdProp,         ipropPar,
+	   "pard",       0,         fFalse,     kwdProp,         ipropPard,
+	   "pgndec",     pgDec,     fTrue,      kwdProp,         ipropPgnFormat,
+	   "pgnlcltr",   pgLLtr,    fTrue,      kwdProp,         ipropPgnFormat,
+	   "pgnlcrm",    pgLRom,    fTrue,      kwdProp,         ipropPgnFormat,
+	   "pgnstart",   1,         fTrue,      kwdProp,         ipropPgnStart,
+	   "pgnucltr",   pgULtr,    fTrue,      kwdProp,         ipropPgnFormat,
+	   "pgnucrm",    pgURom,    fTrue,      kwdProp,         ipropPgnFormat,
+	   "pgnx",       0,         fFalse,     kwdProp,         ipropPgnX,
+	   "pgny",       0,         fFalse,     kwdProp,         ipropPgnY,
+	   "pict",       0,         fFalse,     kwdDest,         idestPict,
+	   "printim",    0,         fFalse,     kwdDest,         idestSkip,
+	   "private1",   0,         fFalse,     kwdDest,         idestSkip,
+	   "qc",         justC,     fTrue,      kwdProp,         ipropJust,
+	   "qj",         justF,     fTrue,      kwdProp,         ipropJust,
+	   "ql",         justL,     fTrue,      kwdProp,         ipropJust,
+	   "qr",         justR,     fTrue,      kwdProp,         ipropJust,
+	   "rdblquote",  0,         fFalse,     kwdChar,         '"',
+	   "red",        0,         fFalse,     kwdProp,         ipropCred,
+	   "revtim",     0,         fFalse,     kwdDest,         idestSkip,
+	   "ri",         0,         fFalse,     kwdProp,         ipropRightInd,
+	   "row",        0,         fFalse,     kwdProp,         ipropRow,
+	   "rxe",        0,         fFalse,     kwdDest,         idestSkip,
+	   "sbkcol",     sbkCol,    fTrue,      kwdProp,         ipropSbk,
+	   "sbkeven",    sbkEvn,    fTrue,      kwdProp,         ipropSbk,
+	   "sbknone",    sbkNon,    fTrue,      kwdProp,         ipropSbk,
+	   "sbkodd",     sbkOdd,    fTrue,      kwdProp,         ipropSbk,
+	   "sbkpage",    sbkPg,     fTrue,      kwdProp,         ipropSbk,
+	   "sect",       0,         fFalse,     kwdProp,         ipropSect,
+	   "shppict",    0,         fFalse,     kwdDest,         idestShppict,
+	   "shpinst",    0,         fFalse,     kwdDest,         idestShppict,
+	   "stylesheet", 0,         fFalse,     kwdDest,         idestStyle,
+	   "subject",    0,         fFalse,     kwdDest,         idestSkip,
+	   "tab",        0,         fFalse,     kwdChar,         0x09,
+	   "tc",         0,         fFalse,     kwdDest,         idestSkip,
+	   "tcelld",     0,         fFalse,     kwdProp,         ipropTcelld,
+	   "title",      0,         fFalse,     kwdDest,         idestTitle,
+	   "trowd",      0,         fFalse,     kwdProp,         ipropTrowd,
+	   "txe",        0,         fFalse,     kwdDest,         idestSkip,
+	   "u",          0,         fFalse,     kwdUTF,          0,
+	   "xe",         0,         fFalse,     kwdDest,         idestSkip,
+	   "yr",         0,         fFalse,     kwdProp,         ipropYear,
+	   "{",          0,         fFalse,     kwdChar,         '{',
+	   "}",          0,         fFalse,     kwdChar,         '}',
 	 	};
 
+// Parser vars
+int cGroup;
+bool fSkipDestIfUnk;
+bool isUTF;
+long cbBin;
+long lParam;
+RDS rds;
+RIS ris;
+FONT fnt;
+COLOR col;
+SAVE *psave;
+FILE *fpIn;
+
+INFO info;
+
+rprop_t *prop;
+rnotify_t *no;
+
+// STYLESHEET
+STYLE stylesheet[256];
+int nstyles;
+
+// RTF parser declarations
+int ecPushRtfState(void);
+int ecPopRtfState(void);
+int ecParseRtfKeyword(FILE *fp);
+int ecParseChar(int c);
+int ecParseUTF(int c);
+int ecTranslateKeyword(char *szKeyword, int param, bool fParam);
+int ecPrintChar(int ch);
+int ecEndGroupAction(RDS rds);
+int ecApplyPropChange(IPROP iprop, int val);
+int ecChangeDest(IDEST idest);
+int ecParseSpecialKeyword(IPFN ipfn);
+int ecParseSpecialProperty(IPROP iprop, int val);
+int ecParseHexByte(void);
+
+
 int isymMax = sizeof(rgsymRtf) / sizeof(SYM);
+
+struct data_t {
+	unsigned char *data;
+	int len;
+	int size;
+};
+
+int data_init(struct data_t *d)
+{
+	d->size = BUFSIZ;
+	d->data = malloc(d->size);
+	if (!d->data)
+		return -1;
+	d->len = 0;
+	return 0;
+}
+
+void data_append(struct data_t *d, unsigned char c)
+{
+	int new_len = d->len + 1;
+	if (new_len > d->size){
+		void *ptr = realloc(d->data, d->size + BUFSIZ);
+		if (!ptr)
+			return;
+		d->size += BUFSIZ;
+	}
+
+	d->data[d->len++] = c;
+}
+
+struct data_t picture;
 
 //
 // %%Function: ecApplyPropChange
@@ -314,6 +430,15 @@ ecApplyPropChange(IPROP iprop, int val)
 			break;
 		case propTcp:
 			pb = (char *)&(prop->tcp);
+			break;
+		case propFnt:
+			pb = (char *)&fnt;
+			break;
+		case propCol:
+			pb = (char *)&col;
+			break;
+		case propInfo:
+			pb = (char *)&info;
 			break;
 		 
 		default:
@@ -370,21 +495,56 @@ ecParseSpecialProperty(IPROP iprop, int val)
 			if (no->par_cb)
 				no->par_cb(no->udata);
 			//ecPrintChar(0x0a); // print new line
+			return ecOK;
 		
 		case ipropSect:
 			if (no->sect_cb)
 				no->sect_cb(no->udata);
+			return ecOK;
 		
 		case ipropRow:
 			if (no->row_cb)
 				no->row_cb(no->udata);
+			return ecOK;
 		
 		case ipropCell:
 			if (no->cell_cb)
 				no->cell_cb(no->udata);
+			return ecOK;
 
+		case ipropStyle:
+			if (rds == rdsStyle) // add to stylesheet
+				stylesheet[nstyles].s = val;
+			else{
+				// apply styles to paragraph prop
+				int i;
+				for (i = 0; i < nstyles; ++i){
+					if (stylesheet[i].s == val){
+						prop->chp = stylesheet[i].chp;
+						prop->pap = stylesheet[i].pap;
+					}
+				}
+				prop->pap.s = val;
+			}
 			return ecOK;
 		
+		case ipropDStyle:
+			if (rds == rdsStyle) // add to stylesheet
+				stylesheet[nstyles].ds = val;
+			else {
+				// apply styles to section prop
+				int i;
+				for (i = 0; i < nstyles; ++i){
+					if (stylesheet[i].s == val){
+						prop->chp = stylesheet[i].chp;
+						prop->pap = stylesheet[i].pap;
+						prop->sep = stylesheet[i].sep;
+					}
+				}
+				prop->sep.ds = val;
+			}
+			return ecOK;
+
 		default:
 			return ecBadTable;
 	}
@@ -461,6 +621,54 @@ ecChangeDest(IDEST idest)
 	
 	switch (idest)
 	{
+		case idestFnt:
+			memset(&fnt, 0, sizeof(FONT));
+			rds = rdsFonttbl;
+			break;
+
+		case idestCol:
+			memset(&col, 0, sizeof(COLOR));
+			rds = rdsColor;
+			break;
+		
+		case idestFalt:
+			rds = rdsFalt;
+			break;
+		
+		case idestStyle:
+			rds = rdsStyle;
+			break;
+		
+		case idestInfo:
+			memset(&info, 0, sizeof(INFO));
+			rds = rdsInfo;
+			break;
+		
+		case idestAuthor:
+			rds = rdsAuthor;
+			break;
+		
+		case idestTitle:
+			rds = rdsTitle;
+			break;
+		
+		case idestShppict:
+			rds = rdsShppict;
+			break;
+		
+		case idestPict:
+			{
+				// try to allocate memory
+				if (data_init(&picture))
+					rds = rdsSkip;
+				else
+					rds = rdsPict;
+			}
+			break;
+		
+		case idestCreatim:
+			break;
+
 		default:
 			rds = rdsSkip;     // when in doubt, skip it...
 			break;
@@ -477,6 +685,18 @@ ecChangeDest(IDEST idest)
 int
 ecEndGroupAction(RDS rds)
 {
+	if (rds == rdsPict){
+		printf("PICTURE\n");
+		// parse picture
+		if (picture.data){
+			int i; 
+			for (i = 0; i < picture.len; ++i) {
+				printf("%c", picture.data[i]);
+			}
+			printf("\n");
+			free(picture.data);
+		}
+	}
 	return ecOK;
 }
 
@@ -501,10 +721,7 @@ ecParseSpecialKeyword(IPFN ipfn)
 			fSkipDestIfUnk = fTrue;
 			break;
 		case ipfnHex:
-		{
-			/*if (ris != risUTF)*/
 			ris = risHex;
-		}
 		break;
 			 
 		default:
@@ -530,6 +747,9 @@ int ecRtfParse(
 	fpIn = fp;
 	prop = _prop;
 	no = _no;
+			
+	memset(&info, 0, sizeof(INFO));
+	prop->dop.info = &info;
 
 	int ch;
 	int ec;
@@ -681,6 +901,7 @@ ecPopRtfState(void)
 	psave = psave->pNext;
 	cGroup--;
 	free(psaveOld);
+
 	return ecOK;
 }
 
@@ -752,7 +973,78 @@ ecParseRtfKeyword(FILE *fp)
 	return ecTranslateKeyword(szKeyword, param, fParam);
 }
 
-//
+int
+ecAddFont(int ch, char alt)
+{
+	if (ch == ';'){
+		fnt.name[fnt.lname] = 0;
+		fnt.falt[fnt.lfalt] = 0;
+
+		if (no->font_cb)
+			no->font_cb(no->udata, &fnt);
+		memset(&fnt, 0, sizeof(FONT));
+		return ecOK;
+	}
+
+	if (alt)
+		fnt.falt[fnt.lfalt++] = ch;
+	else 
+		fnt.name[fnt.lname++] = ch;
+	
+	return ecOK;
+}
+
+int
+ecAddColor(int ch)
+{
+	if (ch == ';'){
+		if (no->color_cb)
+			no->color_cb(no->udata, &col);
+		memset(&col, 0, sizeof(COLOR));
+	}
+	return ecOK;
+}
+
+int
+ecAddTitle(int ch)
+{
+	if (info.ltitle < sizeof(info.title))
+		info.title[info.ltitle++] = ch;
+	info.title[info.ltitle] = 0;
+	return ecOK;
+}
+
+int
+ecAddAuthor(int ch)
+{
+	if (info.lauthor < sizeof(info.author))
+		info.author[info.lauthor++] = ch;
+	info.author[info.lauthor] = 0;
+	return ecOK;
+}
+
+int
+ecAddPicture(int ch)
+{
+	data_append(&picture, ch);
+	return ecOK;
+}
+
+int
+ecAddStyle(int ch)
+{
+	if (ch == ';'){
+		stylesheet[nstyles].chp = prop->chp;
+		stylesheet[nstyles].pap = prop->pap;
+		stylesheet[nstyles].sep = prop->sep;
+		if (no->style_cb)
+			no->style_cb(no->udata, &(stylesheet[nstyles]));
+		nstyles++;
+	} else 
+		stylesheet[nstyles].name[stylesheet[nstyles].lname++] = ch;
+	return ecOK;
+}
+
 // %%Function: ecParseChar
 //
 // Route the character to the appropriate destination stream.
@@ -767,6 +1059,27 @@ ecParseChar(int ch)
 		case rdsSkip:
 			// Toss this character.
 			return ecOK;
+		
+		case rdsFonttbl:
+			return ecAddFont(ch, 0);
+		
+		case rdsFalt:
+			return ecAddFont(ch, 1);
+		
+		case rdsColor:
+			return ecAddColor(ch);
+
+		case rdsStyle:
+			return ecAddStyle(ch);
+		
+		case rdsAuthor:
+			return ecAddAuthor(ch);
+		
+		case rdsTitle:
+			return ecAddTitle(ch);
+		
+		case rdsPict:
+			return ecAddPicture(ch);
 		
 		case rdsNorm:
 			// Output a character. Properties are valid at this point.

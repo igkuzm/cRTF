@@ -2,7 +2,7 @@
  * File              : rtftype.h
  * Author            : Igor V. Sementsov <ig.kuzm@gmail.com>
  * Date              : 17.01.2024
- * Last Modified Date: 19.01.2024
+ * Last Modified Date: 20.01.2024
  * Last Modified By  : Igor V. Sementsov <ig.kuzm@gmail.com>
  */
 
@@ -166,18 +166,14 @@ typedef enum {
 	charset_pca
 } CHSET;
 
-typedef struct rtf_info {
-	/* data */
-	char  title[32];  // document title
-	int   ltitle;     // length of title
-	char  author[32]; // document author
-	int   lauthor;    // length of author string
+typedef struct rtf_date {
 	int   year;
 	int   month;
 	int   day;
 	int   hour;
 	int   min;
-} INFO;
+	int   sec;
+} DATE;
 
 /* Document properties */
 typedef struct doc_prop
@@ -195,8 +191,15 @@ typedef struct doc_prop
 	int   deff;       // Default font
 	int   defftab;    // Default tab width
 	int   cpg;        // codepage
+	int   version;    // document version
+	int   vern;       // internal version
+	int   emin;       // Total editing time (in minutes) 
+	int   npages;     // Number of pages 
+	int   nwords;     // Number of words
+	int   nchars;     // Number of characters including spaces
+	int   ncharsws;   // Number of characters not including spaces
+	int   id;         // Internal ID number 
 	CHSET chset;      // charset
-	INFO  *info;      // Document info
 } DOP;							// DOcument Properties
 
 typedef	struct style {
@@ -214,18 +217,34 @@ typedef	struct style {
 
 // picture type
 typedef	enum {
-	pict_emf,     //
-	pict_png,     //
-	pict_jpg,     //
+	pict_emf,     // Source of the picture is an EMF (enhanced metafile)
+	pict_png,     // PNG
+	pict_jpg,     // JPEG
 	pict_mac,     // Source of the picture is QuickDraw
-	pict_wmf,     // 
+	pict_wmf,     // Source of the picture is a Windows metafile 
 	pict_omf,     // Source of the picture is an OS/2 metafile
 	pict_ibitmap, // Source of the picture is a Windows device-independent bitmap 
 	pict_dbitmap, // Source of the picture is a Windows device-dependent bitmap 
 } PICT_T;
 
 typedef struct picture {
-						
+	unsigned char   *data; // binary data
+	int              len;  // length of data
+	
+	PICT_T type;
+	int    type_n;
+	long   w;      // xExt field if the picture is a Windows metafile; picture width in pixels if
+								 // the picture is a bitmap or from QuickDraw
+	long   h;      // yExt field if the picture is a Windows metafile; picture height in pixels if
+								 // the picture is a bitmap or from QuickDraw
+	long   goalw;  // Desired width of the picture in twips
+	long   goalh;  // Desired height of the picture in twips
+	int    scalex; // Horizontal scaling value. The N argument is a value representing a percentage
+								 // (the default is 100)
+	int    scaley; // Vertical scaling value. The N argument is a value representing a percentage
+								 // (the default is 100)
+	char   scaled; // Scales the picture to fit within the specified frame. Used only with \macpict
+								 // pictures
 } PICT;
 
 #endif

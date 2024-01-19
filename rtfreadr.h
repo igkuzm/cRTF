@@ -19,9 +19,32 @@ typedef	struct rtfprop {
 	TCP tcp;
 } rprop_t;
 
+typedef enum {
+	info_author,
+	info_titile,
+	info_subject,
+	info_comment,
+	info_keywords,
+	info_manager,
+	info_company,
+	info_operator,
+	info_category,
+	info_doccomm,
+	info_hlinkbase,
+} INFO_T;
+
+typedef enum {
+	date_create,
+	date_revision,
+	date_print,
+	date_backup,
+} DATE_T;
+
 typedef struct rtfnotify {
 	void *udata;
 	int (*font_cb)(void *udata, FONT *p);
+	int (*info_cb)(void *udata, INFO_T t, const char *s);
+	int (*date_cb)(void *udata, DATE_T t, DATE *d);
 	int (*style_cb)(void *udata, STYLE *s);
 	int (*color_cb)(void *udata, COLOR *c);
 	int (*sect_cb)(void *udata);
@@ -29,7 +52,7 @@ typedef struct rtfnotify {
 	int (*row_cb)(void *udata);
 	int (*cell_cb)(void *udata);
 	int (*char_cb)(void *udata, int ch);
-	int (*picture_cb) (void *udata, void *data, int len);
+	int (*pict_cb) (void *udata, PICT *p);
 } rnotify_t;
 
 /* parse RTF file and run callbacks */

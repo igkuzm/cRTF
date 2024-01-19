@@ -2,7 +2,7 @@
  * File              : rtfreadr.c
  * Author            : Igor V. Sementsov <ig.kuzm@gmail.com>
  * Date              : 17.01.2024
- * Last Modified Date: 19.01.2024
+ * Last Modified Date: 20.01.2024
  * Last Modified By  : Igor V. Sementsov <ig.kuzm@gmail.com>
  */
 #include <stdio.h>
@@ -14,6 +14,7 @@
 #include "rtftype.h"
 #include "rtfreadr.h"
 #include "utf.h"
+#include "str.h"
 
 typedef enum { 
 	rdsNorm, 
@@ -23,8 +24,8 @@ typedef enum {
 	rdsSkip,
 	rdsStyle,
 	rdsInfo,
-	rdsTitle,
-	rdsAuthor,
+	rdsInfoString,
+	rdsInfoDate,
 	rdsShppict,
 	rdsPict,
 } RDS;                    // Rtf Destination State
@@ -94,6 +95,26 @@ typedef enum {
 	ipropDay,
 	ipropHour,
 	ipropMin,
+	ipropSec,
+	ipropPicttype,
+	ipropOmf,
+	ipropWmf,
+	ipropIbitmap,
+	ipropDbitmap,
+	ipropPicw,
+	ipropPich,
+	ipropPicwgoal,
+	ipropPichgoal,
+	ipropPicscalex,
+	ipropPicscaley,
+	ipropPicscaled,
+	ipropUd,
+	ipropVersion,
+	ipropNofpages,
+	ipropNofword,
+	ipropNofchars,
+	ipropNofcharsws,
+	ipropId,
 	
 	ipropMax
 } IPROP;
@@ -101,7 +122,8 @@ typedef enum {
 typedef enum {
 	actnSpec, 
 	actnByte, 
-	actnWord
+	actnWord,
+	actnLong,
 } ACTN;
 
 typedef enum {
@@ -113,7 +135,8 @@ typedef enum {
 	propTcp,
 	propFnt,
 	propCol,
-	propInfo,
+	propDate,
+	propPict,
 } PROPTYPE;
 
 typedef struct propmod
@@ -139,7 +162,19 @@ typedef enum {
 	idestInfo,
 	idestTitle,
 	idestAuthor,
+	idestSubject,
+	idestComment,
+	idestKeywords,
+	idestManger,
+	idestCompany,
+	idestOperator,
+	idestCategory,
+	idestDoccomm,
+	idestHlinkbase,
 	idestCreatim,
+	idestRevtim,
+	idestPrintim,
+	idestBuptim,
 	idestShppict,
 } IDEST;
 
@@ -205,11 +240,31 @@ PROP rgprop [ipropMax] = {
 		 actnByte,   propFnt,       offsetof(FONT,  ffam),                // ipropFfam
 		 actnSpec,   propPap,       0,                                    // ipropStyle
 		 actnSpec,   propSep,       0,                                    // ipropDStyle
-		 actnWord,   propInfo,      offsetof(INFO, year),                 // ipropYear
-		 actnWord,   propInfo,      offsetof(INFO, month),                // ipropMonth
-		 actnWord,   propInfo,      offsetof(INFO, day),                  // ipropDay
-		 actnWord,   propInfo,      offsetof(INFO, hour),                 // ipropHour
-		 actnWord,   propInfo,      offsetof(INFO, min),                  // ipropMin
+		 actnWord,   propDate,      offsetof(DATE, year),                 // ipropYear
+		 actnWord,   propDate,      offsetof(DATE, month),                // ipropMonth
+		 actnWord,   propDate,      offsetof(DATE, day),                  // ipropDay
+		 actnWord,   propDate,      offsetof(DATE, hour),                 // ipropHour
+		 actnWord,   propDate,      offsetof(DATE, min),                  // ipropMin
+		 actnWord,   propDate,      offsetof(DATE, sec),                  // ipropSec
+		 actnWord,   propPict,      offsetof(PICT, type),                 // ipropPicttype
+		 actnSpec,   propPict,      0,                                    // ipropOmf
+		 actnSpec,   propPict,      0,                                    // ipropWmf
+		 actnSpec,   propPict,      0,                                    // ipropIbitmap
+		 actnSpec,   propPict,      0,                                    // ipropDbitmap
+		 actnLong,   propPict,      offsetof(PICT, w),                    // ipropPictw
+		 actnLong,   propPict,      offsetof(PICT, h),                    // ipropPicth
+		 actnLong,   propPict,      offsetof(PICT, goalw),                // ipropPictwgoal
+		 actnLong,   propPict,      offsetof(PICT, goalh),                // ipropPicthgoal
+		 actnWord,   propPict,      offsetof(PICT, scalex),               // ipropPictscalex
+		 actnWord,   propPict,      offsetof(PICT, scaley),               // ipropPictscaley
+		 actnByte,   propPict,      offsetof(PICT, scaled),               // ipropPictscaled
+		 actnSpec,   propPap,      0,                                     // ipropUd
+		 actnWord,   propDop,      offsetof(DOP, version),                // ipropVersion
+		 actnWord,   propDop,      offsetof(DOP, npages),                // ipropNofpages
+		 actnWord,   propDop,      offsetof(DOP, nwords),                // ipropNofword
+		 actnWord,   propDop,      offsetof(DOP, nchars),                // ipropNofchars
+		 actnWord,   propDop,      offsetof(DOP, ncharsws),                // ipropNofcharsws
+		 actnWord,   propDop,      offsetof(DOP, id),                // ipropId
 };
 
 // Keyword descriptions
@@ -228,14 +283,16 @@ SYM rgsymRtf[] = {
 	   "author",     0,         fFalse,     kwdDest,         idestAuthor,
 	   "bin",        0,         fFalse,     kwdSpec,         ipfnBin,
 	   "blue",       0,         fFalse,     kwdProp,         ipropCblue,
-	   "buptim",     0,         fFalse,     kwdDest,         idestSkip,
+	   "buptim",     0,         fFalse,     kwdDest,         idestBuptim,
 	   "cell",       0,         fFalse,     kwdProp,         ipropCell,
 	   "colortbl",   0,         fFalse,     kwdDest,         idestCol,
 	   "cols",       1,         fFalse,     kwdProp,         ipropCols,
-	   "comment",    0,         fFalse,     kwdDest,         idestSkip,
+	   "comment",    0,         fFalse,     kwdDest,         idestComment,
 	   "creatim",    0,         fFalse,     kwdDest,         idestCreatim,
-	   "doccomm",    0,         fFalse,     kwdDest,         idestSkip,
+	   "dibitmap",   0,         fFalse,     kwdProp,         ipropIbitmap,
+	   "doccomm",    0,         fFalse,     kwdDest,         idestDoccomm,
 	   "dy",         0,         fFalse,     kwdProp,         ipropDay,
+	   "emfblip",    pict_emf,  fTrue,      kwdProp,         ipropPicttype,
 	   "f",          0,         fFalse,     kwdProp,         ipropFnum,
 	   "facingp",    1,         fTrue,      kwdProp,         ipropFacingp,
 	   "falt",       0,         fFalse,     kwdDest,         idestFalt,
@@ -267,18 +324,20 @@ SYM rgsymRtf[] = {
 	   "headerr",    0,         fFalse,     kwdDest,         idestSkip,
 	   "hr",         0,         fFalse,     kwdProp,         ipropHour,
 	   "info",       0,         fFalse,     kwdDest,         idestInfo,
-	   "keywords",   0,         fFalse,     kwdDest,         idestSkip,
+	   "jpegblip",   pict_jpg,  fTrue,      kwdProp,         ipropPicttype,
+	   "keywords",   0,         fFalse,     kwdDest,         idestKeywords,
 	   "landscape",  1,         fTrue,      kwdProp,         ipropLandscape,
 	   "ldblquote",  0,         fFalse,     kwdChar,         '"',
 	   "li",         0,         fFalse,     kwdProp,         ipropLeftInd,
+	   "macpict",    pict_mac,  fTrue,      kwdProp,         ipropPicttype,
 	   "margb",      1440,      fFalse,     kwdProp,         ipropYaBottom,
 	   "margl",      1800,      fFalse,     kwdProp,         ipropXaLeft,
 	   "margr",      1800,      fFalse,     kwdProp,         ipropXaRight,
 	   "margt",      1440,      fFalse,     kwdProp,         ipropYaTop,
 	   "min",        0,         fFalse,     kwdProp,         ipropMin,
 	   "mo",         0,         fFalse,     kwdProp,         ipropMonth,
-	   "noshppict",  0,         fFalse,     kwdDest,         idestSkip,
-	   "operator",   0,         fFalse,     kwdDest,         idestSkip,
+	   "nonshppict", 0,         fFalse,     kwdDest,         idestSkip,
+	   "operator",   0,         fFalse,     kwdDest,         idestOperator,
 	   "paperh",     15480,     fFalse,     kwdProp,         ipropYaPage,
 	   "paperw",     12240,     fFalse,     kwdProp,         ipropXaPage,
 	   "par",        0,         fFalse,     kwdProp,         ipropPar,
@@ -291,8 +350,17 @@ SYM rgsymRtf[] = {
 	   "pgnucrm",    pgURom,    fTrue,      kwdProp,         ipropPgnFormat,
 	   "pgnx",       0,         fFalse,     kwdProp,         ipropPgnX,
 	   "pgny",       0,         fFalse,     kwdProp,         ipropPgnY,
+	   "pich",       0,         fFalse,     kwdProp,         ipropPich,
+	   "pichgoal",   0,         fFalse,     kwdProp,         ipropPichgoal,
+	   "picscaled",  0,         fFalse,     kwdProp,         ipropPicscaled,
+	   "picscalex",  0,         fFalse,     kwdProp,         ipropPicscalex,
+	   "picscaley",  0,         fFalse,     kwdProp,         ipropPicscaley,
 	   "pict",       0,         fFalse,     kwdDest,         idestPict,
-	   "printim",    0,         fFalse,     kwdDest,         idestSkip,
+	   "picw",       0,         fFalse,     kwdProp,         ipropPicw,
+	   "picwgoal",   0,         fFalse,     kwdProp,         ipropPicwgoal,
+	   "pmmetafile", 0,         fFalse,     kwdProp,         ipropOmf,
+	   "pngblip",    pict_png,  fTrue,      kwdProp,         ipropPicttype,
+	   "printim",    0,         fFalse,     kwdDest,         idestPrintim,
 	   "private1",   0,         fFalse,     kwdDest,         idestSkip,
 	   "qc",         justC,     fTrue,      kwdProp,         ipropJust,
 	   "qj",         justF,     fTrue,      kwdProp,         ipropJust,
@@ -300,7 +368,7 @@ SYM rgsymRtf[] = {
 	   "qr",         justR,     fTrue,      kwdProp,         ipropJust,
 	   "rdblquote",  0,         fFalse,     kwdChar,         '"',
 	   "red",        0,         fFalse,     kwdProp,         ipropCred,
-	   "revtim",     0,         fFalse,     kwdDest,         idestSkip,
+	   "revtim",     0,         fFalse,     kwdDest,         idestRevtim,
 	   "ri",         0,         fFalse,     kwdProp,         ipropRightInd,
 	   "row",        0,         fFalse,     kwdProp,         ipropRow,
 	   "rxe",        0,         fFalse,     kwdDest,         idestSkip,
@@ -309,11 +377,12 @@ SYM rgsymRtf[] = {
 	   "sbknone",    sbkNon,    fTrue,      kwdProp,         ipropSbk,
 	   "sbkodd",     sbkOdd,    fTrue,      kwdProp,         ipropSbk,
 	   "sbkpage",    sbkPg,     fTrue,      kwdProp,         ipropSbk,
+	   "sec",        0,         fFalse,     kwdProp,         ipropSec,
 	   "sect",       0,         fFalse,     kwdProp,         ipropSect,
-	   "shppict",    0,         fFalse,     kwdDest,         idestShppict,
 	   "shpinst",    0,         fFalse,     kwdDest,         idestShppict,
+	   "shppict",    0,         fFalse,     kwdDest,         idestShppict,
 	   "stylesheet", 0,         fFalse,     kwdDest,         idestStyle,
-	   "subject",    0,         fFalse,     kwdDest,         idestSkip,
+	   "subject",    0,         fFalse,     kwdDest,         idestSubject,
 	   "tab",        0,         fFalse,     kwdChar,         0x09,
 	   "tc",         0,         fFalse,     kwdDest,         idestSkip,
 	   "tcelld",     0,         fFalse,     kwdProp,         ipropTcelld,
@@ -321,10 +390,23 @@ SYM rgsymRtf[] = {
 	   "trowd",      0,         fFalse,     kwdProp,         ipropTrowd,
 	   "txe",        0,         fFalse,     kwdDest,         idestSkip,
 	   "u",          0,         fFalse,     kwdUTF,          0,
+		 "ud",         0,         fFalse,     kwdProp,         ipropUd,
+		 "upr",         0,         fFalse,     kwdDest,         idestSkip,
+	   "wbitmap",    0,         fFalse,     kwdProp,         ipropDbitmap,
+	   "wmetafile",  0,         fFalse,     kwdProp,         ipropWmf,
 	   "xe",         0,         fFalse,     kwdDest,         idestSkip,
 	   "yr",         0,         fFalse,     kwdProp,         ipropYear,
 	   "{",          0,         fFalse,     kwdChar,         '{',
 	   "}",          0,         fFalse,     kwdChar,         '}',
+	   "company",     0,         fFalse,     kwdDest,         idestCompany,
+	   "category",     0,         fFalse,     kwdDest,         idestCategory,
+	   "version",          0,         fFalse,     kwdProp,         ipropVersion,
+	   "hlinkbase",          0,         fFalse,     kwdDest,         idestHlinkbase,
+	   "nofpages",          0,         fFalse,     kwdProp,         ipropNofpages,
+	   "nofwords",          0,         fFalse,     kwdProp,         ipropNofword,
+	   "nofchars",          0,         fFalse,     kwdProp,         ipropNofchars,
+	   "nofcharsws",          0,         fFalse,     kwdProp,         ipropNofcharsws,
+	   "id",          0,         fFalse,     kwdProp,         ipropId,
 	 	};
 
 // Parser vars
@@ -340,7 +422,7 @@ COLOR col;
 SAVE *psave;
 FILE *fpIn;
 
-INFO info;
+PICT pict;
 
 rprop_t *prop;
 rnotify_t *no;
@@ -348,6 +430,15 @@ rnotify_t *no;
 // STYLESHEET
 STYLE stylesheet[256];
 int nstyles;
+
+// INFO
+char info[BUFSIZ] = {0};
+int  linfo = 0;
+INFO_T tinfo;
+
+// DATE
+DATE date;
+DATE_T tdate;
 
 // RTF parser declarations
 int ecPushRtfState(void);
@@ -358,7 +449,7 @@ int ecParseUTF(int c);
 int ecTranslateKeyword(char *szKeyword, int param, bool fParam);
 int ecPrintChar(int ch);
 int ecEndGroupAction(RDS rds);
-int ecApplyPropChange(IPROP iprop, int val);
+int ecApplyPropChange(IPROP iprop, long val);
 int ecChangeDest(IDEST idest);
 int ecParseSpecialKeyword(IPFN ipfn);
 int ecParseSpecialProperty(IPROP iprop, int val);
@@ -367,36 +458,7 @@ int ecParseHexByte(void);
 
 int isymMax = sizeof(rgsymRtf) / sizeof(SYM);
 
-struct data_t {
-	unsigned char *data;
-	int len;
-	int size;
-};
-
-int data_init(struct data_t *d)
-{
-	d->size = BUFSIZ;
-	d->data = malloc(d->size);
-	if (!d->data)
-		return -1;
-	d->len = 0;
-	return 0;
-}
-
-void data_append(struct data_t *d, unsigned char c)
-{
-	int new_len = d->len + 1;
-	if (new_len > d->size){
-		void *ptr = realloc(d->data, d->size + BUFSIZ);
-		if (!ptr)
-			return;
-		d->size += BUFSIZ;
-	}
-
-	d->data[d->len++] = c;
-}
-
-struct data_t picture;
+struct str img;
 
 //
 // %%Function: ecApplyPropChange
@@ -405,7 +467,7 @@ struct data_t picture;
 //
 //
 int
-ecApplyPropChange(IPROP iprop, int val)
+ecApplyPropChange(IPROP iprop, long val)
 {
 	char *pb;
 	if (rds == rdsSkip)             // If we're skipping text,
@@ -437,8 +499,11 @@ ecApplyPropChange(IPROP iprop, int val)
 		case propCol:
 			pb = (char *)&col;
 			break;
-		case propInfo:
-			pb = (char *)&info;
+		case propDate:
+			pb = (char *)&date;
+			break;
+		case propPict:
+			pb = (char *)&pict;
 			break;
 		 
 		default:
@@ -454,6 +519,9 @@ ecApplyPropChange(IPROP iprop, int val)
 			break;
 		case actnWord:
 			(*(int *) (pb+rgprop[iprop].offset)) = val;
+			break;
+		case actnLong:
+			(*(long *) (pb+rgprop[iprop].offset)) = lParam;
 			break;
 		case actnSpec:
 			return ecParseSpecialProperty(iprop, val);
@@ -489,6 +557,26 @@ ecParseSpecialProperty(IPROP iprop, int val)
 			return ecOK;
 		case ipropTcelld:
 			memset(&(prop->tcp), 0, sizeof(TCP));
+			return ecOK;
+		
+		case ipropOmf:
+			pict.type = pict_omf;
+			pict.type_n = val;
+			return ecOK;
+		case ipropWmf:
+			pict.type = pict_wmf;
+			pict.type_n = val;
+			return ecOK;
+		case ipropIbitmap:
+			pict.type = pict_ibitmap;
+			pict.type_n = val;
+			return ecOK;
+		case ipropDbitmap:
+			pict.type = pict_dbitmap;
+			pict.type_n = val;
+			return ecOK;
+		
+		case ipropUd:  // we can read utf (use \ud and skip \udr)
 			return ecOK;
 		
 		case ipropPar:
@@ -640,16 +728,108 @@ ecChangeDest(IDEST idest)
 			break;
 		
 		case idestInfo:
-			memset(&info, 0, sizeof(INFO));
 			rds = rdsInfo;
 			break;
 		
-		case idestAuthor:
-			rds = rdsAuthor;
+		case idestTitle:
+			info[0] = 0;
+			linfo = 0;
+			tinfo = info_titile;
+			rds = rdsInfoString;
 			break;
 		
-		case idestTitle:
-			rds = rdsTitle;
+		case idestSubject:
+			info[0] = 0;
+			linfo = 0;
+			tinfo = info_subject;
+			rds = rdsInfoString;
+			break;
+		
+		case idestAuthor:
+			info[0] = 0;
+			linfo = 0;
+			tinfo = info_author;
+			rds = rdsInfoString;
+			break;
+		
+		case idestManger:
+			info[0] = 0;
+			linfo = 0;
+			tinfo = info_manager;
+			rds = rdsInfoString;
+			break;
+		
+		case idestCompany:
+			info[0] = 0;
+			linfo = 0;
+			tinfo = info_company;
+			rds = rdsInfoString;
+			break;
+		
+		case idestOperator:
+			info[0] = 0;
+			linfo = 0;
+			tinfo = info_operator;
+			rds = rdsInfoString;
+			break;
+		
+		case idestCategory:
+			info[0] = 0;
+			linfo = 0;
+			tinfo = info_category;
+			rds = rdsInfoString;
+			break;
+		
+		case idestKeywords:
+			info[0] = 0;
+			linfo = 0;
+			tinfo = info_keywords;
+			rds = rdsInfoString;
+			break;
+		
+		case idestComment:
+			info[0] = 0;
+			linfo = 0;
+			tinfo = info_comment;
+			rds = rdsInfoString;
+			break;
+		
+		case idestDoccomm:
+			info[0] = 0;
+			linfo = 0;
+			tinfo = info_doccomm;
+			rds = rdsInfoString;
+			break;
+		
+		case idestHlinkbase:
+			info[0] = 0;
+			linfo = 0;
+			tinfo = info_hlinkbase;
+			rds = rdsInfoString;
+			break;
+		
+		case idestCreatim:
+			memset(&date, 0, sizeof(DATE));
+			tdate = date_create;
+			rds = rdsInfoDate;
+			break;
+		
+		case idestRevtim:
+			memset(&date, 0, sizeof(DATE));
+			tdate = date_revision;
+			rds = rdsInfoDate;
+			break;
+		
+		case idestPrintim:
+			memset(&date, 0, sizeof(DATE));
+			tdate = date_print;
+			rds = rdsInfoDate;
+			break;
+		
+		case idestBuptim:
+			memset(&date, 0, sizeof(DATE));
+			tdate = date_backup;
+			rds = rdsInfoDate;
 			break;
 		
 		case idestShppict:
@@ -658,17 +838,15 @@ ecChangeDest(IDEST idest)
 		
 		case idestPict:
 			{
+				memset(&pict, 0, sizeof(PICT));
 				// try to allocate memory
-				if (data_init(&picture))
+				if (str_init(&img, 4194304))
 					rds = rdsSkip;
 				else
 					rds = rdsPict;
 			}
 			break;
 		
-		case idestCreatim:
-			break;
-
 		default:
 			rds = rdsSkip;     // when in doubt, skip it...
 			break;
@@ -686,17 +864,46 @@ int
 ecEndGroupAction(RDS rds)
 {
 	if (rds == rdsPict){
-		printf("PICTURE\n");
 		// parse picture
-		if (picture.data){
-			int i; 
-			for (i = 0; i < picture.len; ++i) {
-				printf("%c", picture.data[i]);
+		if (img.str){
+			// convert image hex string to binary
+			pict.len = img.len/2;
+			pict.data = 
+				(unsigned char*)malloc(pict.len);
+			if (!pict.data) // not enough memory
+				return ecStackOverflow;
+			char cur[3];
+			unsigned int val;
+			size_t i, l;
+			for (i = 0, l = 0; i < img.len;) {
+				cur[0] = img.str[i++];
+				cur[1] = img.str[i++];
+				cur[2] = 0;
+				sscanf(cur, "%x", &val);
+				pict.data[l++] = (unsigned char)val;
 			}
-			printf("\n");
-			free(picture.data);
+			// do callback
+			if (no->pict_cb)
+				no->pict_cb(no->udata, &pict);
+
+			free(img.str);
+			free(pict.data);
 		}
+		return ecOK;
 	}
+	if (rds == rdsInfoString){
+		info[linfo] = 0;
+		if (*info)
+			if (no->info_cb)
+				no->info_cb(no->udata, tinfo, info);
+		return ecOK;
+	}
+	if (rds == rdsInfoDate){
+		if (no->date_cb)
+			no->date_cb(no->udata, tdate, &date);
+		return ecOK;
+	}
+
 	return ecOK;
 }
 
@@ -748,9 +955,6 @@ int ecRtfParse(
 	prop = _prop;
 	no = _no;
 			
-	memset(&info, 0, sizeof(INFO));
-	prop->dop.info = &info;
-
 	int ch;
 	int ec;
 	int cNibble = 2;
@@ -918,7 +1122,7 @@ ecParseRtfKeyword(FILE *fp)
 	int ch;
 	char fParam = fFalse;
 	char fNeg = fFalse;
-	int param = 0;
+	long param = 0;
 	char *pch;
 	char szKeyword[30];
 	char szParameter[20];
@@ -946,6 +1150,8 @@ ecParseRtfKeyword(FILE *fp)
 		if ((ch = getc(fp)) == EOF)
 			return ecEndOfFile;
 	}
+
+	//printf("CW: %s\n", szKeyword);
 
 	if (isdigit(ch))
 	{
@@ -1006,27 +1212,29 @@ ecAddColor(int ch)
 }
 
 int
-ecAddTitle(int ch)
+ecAddInfoString(int ch)
 {
-	if (info.ltitle < sizeof(info.title))
-		info.title[info.ltitle++] = ch;
-	info.title[info.ltitle] = 0;
-	return ecOK;
-}
-
-int
-ecAddAuthor(int ch)
-{
-	if (info.lauthor < sizeof(info.author))
-		info.author[info.lauthor++] = ch;
-	info.author[info.lauthor] = 0;
+	if (linfo < sizeof(info))
+		info[linfo++] = ch;
 	return ecOK;
 }
 
 int
 ecAddPicture(int ch)
 {
-	data_append(&picture, ch);
+	return ecOK;
+	// add only if hex
+	if (ch == 'a' || ch == 'A' ||
+			ch == 'b' || ch == 'B' ||
+			ch == 'c' || ch == 'C' ||
+			ch == 'd' || ch == 'D' ||
+			ch == 'e' || ch == 'E' ||
+			ch == 'f' || ch == 'F' ||
+			isdigit(ch))
+	{
+		char c = ch;
+		str_append(&img, &c, 1);
+	}
 	return ecOK;
 }
 
@@ -1041,7 +1249,8 @@ ecAddStyle(int ch)
 			no->style_cb(no->udata, &(stylesheet[nstyles]));
 		nstyles++;
 	} else 
-		stylesheet[nstyles].name[stylesheet[nstyles].lname++] = ch;
+		if (stylesheet[nstyles].lname < sizeof(stylesheet[nstyles].name))
+			stylesheet[nstyles].name[stylesheet[nstyles].lname++] = ch;
 	return ecOK;
 }
 
@@ -1072,11 +1281,8 @@ ecParseChar(int ch)
 		case rdsStyle:
 			return ecAddStyle(ch);
 		
-		case rdsAuthor:
-			return ecAddAuthor(ch);
-		
-		case rdsTitle:
-			return ecAddTitle(ch);
+		case rdsInfoString:
+			return ecAddInfoString(ch);
 		
 		case rdsPict:
 			return ecAddPicture(ch);

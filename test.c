@@ -2,12 +2,26 @@
  * File              : test.c
  * Author            : Igor V. Sementsov <ig.kuzm@gmail.com>
  * Date              : 18.01.2024
- * Last Modified Date: 19.01.2024
+ * Last Modified Date: 20.01.2024
  * Last Modified By  : Igor V. Sementsov <ig.kuzm@gmail.com>
  */
 
 #include <stdio.h>
 #include "rtfreadr.h"
+#include "rtftype.h"
+#include <string.h>
+
+int info_cb(void *d, INFO_T t, const char *s)
+{
+	printf("%d: %s\n", t, s);
+	return 0;
+}
+
+int date_cb(void *data, DATE_T t, DATE *d)
+{
+	printf("%d: %d.%d.%d %d:%d:%d\n", t, d->day, d->month, d->year, d->hour, d->min, d->sec);
+	return 0;
+}
 
 int style_cb(void *d, STYLE *f)
 {
@@ -33,6 +47,13 @@ int par_cb(void *d)
 	return 0;
 }
 
+int pict_cb(void *d, PICT *p)
+{
+	printf("TYPE: %d\n", p->type);
+	return 0;
+}
+
+
 //
 // %%Function: main
 //
@@ -45,11 +66,16 @@ int main(int argc, char *argv[])
 
 	rprop_t p;
 	rnotify_t n;
+	memset(&(n), 0, sizeof(rnotify_t));
+
 	//n.font_cb = font_cb;
 	//n.char_cb = char_cb;
 	//n.par_cb = par_cb;
 	//n.style_cb = style_cb;
-	n.par_cb = par_cb;
+	//n.par_cb = par_cb;
+	n.pict_cb = pict_cb;
+	n.info_cb = info_cb;
+	n.date_cb = date_cb;
 
 	if (argc < 2)
 		printf ("Usage: %s filename\n", argv[0]);
@@ -67,9 +93,6 @@ int main(int argc, char *argv[])
 		printf("Parsed RTF file OK\n");
 	fclose(fp);
 
-	printf("Author: %s\n", p.dop.info->author);
-	printf("Title: %s\n", p.dop.info->title);
-	
 	return 0;
 }
 

@@ -1354,7 +1354,6 @@ ecAddInfoString(int ch)
 int
 ecAddPicture(int ch)
 {
-	return ecOK;
 	// add only if hex
 	if (ch == 'a' || ch == 'A' ||
 			ch == 'b' || ch == 'B' ||

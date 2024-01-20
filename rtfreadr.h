@@ -42,17 +42,19 @@ typedef enum {
 
 typedef struct rtfnotify {
 	void *udata;
-	int (*font_cb)(void *udata, FONT *p);
-	int (*info_cb)(void *udata, INFO_T t, const char *s);
-	int (*date_cb)(void *udata, DATE_T t, DATE *d);
-	int (*style_cb)(void *udata, STYLE *s);
-	int (*color_cb)(void *udata, COLOR *c);
-	int (*sect_cb)(void *udata);
-	int (*par_cb)(void *udata);
-	int (*row_cb)(void *udata);
-	int (*cell_cb)(void *udata);
-	int (*char_cb)(void *udata, int ch);
-	int (*pict_cb) (void *udata, PICT *p);
+	int (*command_cb)(void *udata, const char *s, int param, char fParam);
+	int (*font_cb)   (void *udata, FONT *p);
+	int (*info_cb)   (void *udata, INFO_T t, const char *s);
+	int (*date_cb)   (void *udata, DATE_T t, DATE *d);
+	int (*style_cb)  (void *udata, STYLE *s);
+	int (*color_cb)  (void *udata, COLOR *c);
+	int (*sect_cb)   (void *udata, SEP *p);
+	int (*par_cb)    (void *udata, PAP *p);
+	int (*row_cb)    (void *udata);
+	int (*cell_cb)   (void *udata);
+	int (*char_cb)   (void *udata, int ch, CHP *p);
+	int (*pict_cb)   (void *udata, PICT *p);
+	int (*foot_cb)   (void *udata, int start);
 } rnotify_t;
 
 /* parse RTF file and run callbacks */

@@ -28,6 +28,7 @@ typedef enum {
 	rdsInfoDate,
 	rdsShppict,
 	rdsPict,
+	rdsFootnote,
 } RDS;                    // Rtf Destination State
 
 typedef enum { 
@@ -48,6 +49,7 @@ typedef struct save       // property save structure
 	TRP trp;
 	TCP tcp;
 } SAVE;
+
 // What types of properties are there?
 typedef enum {
 	ipropBold, 
@@ -118,7 +120,32 @@ typedef enum {
 	ipropFsize,
 	ipropFfcolor,
 	ipropFbcolor,
-	
+	ipropRowjust,
+	ipropRowwrite,
+	ipropRowgaph,
+	ipropCellx,
+	ipropClmgf,
+	ipropClmrg,
+	ipropTrleft,
+	ipropTrrh,
+	ipropTrhdr,
+	ipropTrkeep,
+	ipropTrbrdrt,
+	ipropTrbrdrb,
+	ipropTrbrdrl,
+	ipropTrbrdrr,
+	ipropTrbrdrh,
+	ipropTrbrdrv,
+	ipropClbrdrt,
+	ipropClbrdrb,
+	ipropClbrdrl,
+	ipropClbrdrr,
+	ipropCellaligm,
+	ipropCellshade,
+	ipropCelllinecol,
+	ipropCellbackcol,
+	ipropCellpat,
+
 	ipropMax
 } IPROP;
 
@@ -179,6 +206,7 @@ typedef enum {
 	idestPrintim,
 	idestBuptim,
 	idestShppict,
+	idestFootnote,
 } IDEST;
 
 typedef enum {
@@ -203,84 +231,135 @@ typedef struct symbol
 // RTF parser tables
 // Property descriptions
 PROP rgprop [ipropMax] = {
-		 actnByte,   propChp,       offsetof(CHP, fBold),                 // ipropBold
-		 actnByte,   propChp,       offsetof(CHP, fItalic),               // ipropItalic
-		 actnByte,   propChp,       offsetof(CHP, fUnderline),            // ipropUnderline
-		 actnWord,   propPap,       offsetof(PAP, xaLeft),                // ipropLeftInd
-		 actnWord,   propPap,       offsetof(PAP, xaRight),               // ipropRightInd
-		 actnWord,   propPap,       offsetof(PAP, xaFirst),               // ipropFirstInd
-		 actnWord,   propSep,       offsetof(SEP, cCols),                 // ipropCols
-		 actnWord,   propSep,       offsetof(SEP, xaPgn),                 // ipropPgnX
-		 actnWord,   propSep,       offsetof(SEP, yaPgn),                 // ipropPgnY
-		 actnWord,   propDop,       offsetof(DOP, xaPage),                // ipropXaPage
-		 actnWord,   propDop,       offsetof(DOP, yaPage),                // ipropYaPage
-		 actnWord,   propDop,       offsetof(DOP, xaLeft),                // ipropXaLeft
-		 actnWord,   propDop,       offsetof(DOP, xaRight),               // ipropXaRight
-		 actnWord,   propDop,       offsetof(DOP, yaTop),                 // ipropYaTop
-		 actnWord,   propDop,       offsetof(DOP, yaBottom),              // ipropYaBottom
-		 actnWord,   propDop,       offsetof(DOP, pgnStart),              // ipropPgnStart
-		 actnByte,   propSep,       offsetof(SEP, sbk),                   // ipropSbk
-		 actnByte,   propSep,       offsetof(SEP, pgnFormat),             // ipropPgnFormat
-		 actnByte,   propDop,       offsetof(DOP, fFacingp),              // ipropFacingp
-		 actnByte,   propDop,       offsetof(DOP, fLandscape),            // ipropLandscape
-		 actnByte,   propPap,       offsetof(PAP, just),                  // ipropJust
-		 actnSpec,   propPap,       0,                                    // ipropPard
-		 actnSpec,   propChp,       0,                                    // ipropPlain
-		 actnSpec,   propSep,       0,                                    // ipropSectd
-		 actnSpec,   propSep,       0,                                    // ipropPar
-		 actnSpec,   propSep,       0,                                    // ipropTrowd
-		 actnSpec,   propSep,       0,                                    // ipropTcelld
-		 actnSpec,   propSep,       0,                                    // ipropSect
-		 actnSpec,   propSep,       0,                                    // ipropRow
-		 actnSpec,   propSep,       0,                                    // ipropCell
-		 actnWord,   propFnt,       offsetof(FONT, charset),              // ipropFcharset
-		 actnWord,   propFnt,       offsetof(FONT, fprq),                 // ipropFprq
-		 actnByte,   propFnt,       offsetof(FONT, ftype),                // ipropFtype
-		 actnSpec,   propFnt,       0,                                    // ipropFnum
-		 actnWord,   propCol,       offsetof(COLOR, red),                 // ipropCred
-		 actnWord,   propCol,       offsetof(COLOR, green),               // ipropCgreen
-		 actnWord,   propCol,       offsetof(COLOR, blue),                // ipropCblue
-		 actnByte,   propFnt,       offsetof(FONT,  ffam),                // ipropFfam
-		 actnSpec,   propPap,       0,                                    // ipropStyle
-		 actnSpec,   propSep,       0,                                    // ipropDStyle
-		 actnWord,   propDate,      offsetof(DATE, year),                 // ipropYear
-		 actnWord,   propDate,      offsetof(DATE, month),                // ipropMonth
-		 actnWord,   propDate,      offsetof(DATE, day),                  // ipropDay
-		 actnWord,   propDate,      offsetof(DATE, hour),                 // ipropHour
-		 actnWord,   propDate,      offsetof(DATE, min),                  // ipropMin
-		 actnWord,   propDate,      offsetof(DATE, sec),                  // ipropSec
-		 actnWord,   propPict,      offsetof(PICT, type),                 // ipropPicttype
-		 actnSpec,   propPict,      0,                                    // ipropOmf
-		 actnSpec,   propPict,      0,                                    // ipropWmf
-		 actnSpec,   propPict,      0,                                    // ipropIbitmap
-		 actnSpec,   propPict,      0,                                    // ipropDbitmap
-		 actnLong,   propPict,      offsetof(PICT, w),                    // ipropPictw
-		 actnLong,   propPict,      offsetof(PICT, h),                    // ipropPicth
-		 actnLong,   propPict,      offsetof(PICT, goalw),                // ipropPictwgoal
-		 actnLong,   propPict,      offsetof(PICT, goalh),                // ipropPicthgoal
-		 actnWord,   propPict,      offsetof(PICT, scalex),               // ipropPictscalex
-		 actnWord,   propPict,      offsetof(PICT, scaley),               // ipropPictscaley
-		 actnByte,   propPict,      offsetof(PICT, scaled),               // ipropPictscaled
-		 actnSpec,   propPap,      0,                                     // ipropUd
-		 actnWord,   propDop,      offsetof(DOP, version),                // ipropVersion
-		 actnWord,   propDop,      offsetof(DOP, npages),                // ipropNofpages
-		 actnWord,   propDop,      offsetof(DOP, nwords),                // ipropNofword
-		 actnWord,   propDop,      offsetof(DOP, nchars),                // ipropNofchars
-		 actnWord,   propDop,      offsetof(DOP, ncharsws),                // ipropNofcharsws
-		 actnWord,   propDop,      offsetof(DOP, id),                // ipropId
-		 actnWord,   propChp,      offsetof(CHP, size),                // ipropFsize
-		 actnWord,   propChp,      offsetof(CHP, fcolor),                // ipropFfcolor
-		 actnWord,   propChp,      offsetof(CHP, bcolor),                // ipropFbcolor
+		 actnByte,   propChp,    offsetof(CHP, fBold),         // ipropBold
+		 actnByte,   propChp,    offsetof(CHP, fItalic),       // ipropItalic
+		 actnByte,   propChp,    offsetof(CHP, fUnderline),    // ipropUnderline
+		 actnWord,   propPap,    offsetof(PAP, xaLeft),        // ipropLeftInd
+		 actnWord,   propPap,    offsetof(PAP, xaRight),       // ipropRightInd
+		 actnWord,   propPap,    offsetof(PAP, xaFirst),       // ipropFirstInd
+		 actnWord,   propSep,    offsetof(SEP, cCols),         // ipropCols
+		 actnWord,   propSep,    offsetof(SEP, xaPgn),         // ipropPgnX
+		 actnWord,   propSep,    offsetof(SEP, yaPgn),         // ipropPgnY
+		 actnWord,   propDop,    offsetof(DOP, xaPage),        // ipropXaPage
+		 actnWord,   propDop,    offsetof(DOP, yaPage),        // ipropYaPage
+		 actnWord,   propDop,    offsetof(DOP, xaLeft),        // ipropXaLeft
+		 actnWord,   propDop,    offsetof(DOP, xaRight),       // ipropXaRight
+		 actnWord,   propDop,    offsetof(DOP, yaTop),         // ipropYaTop
+		 actnWord,   propDop,    offsetof(DOP, yaBottom),      // ipropYaBottom
+		 actnWord,   propDop,    offsetof(DOP, pgnStart),      // ipropPgnStart
+		 actnByte,   propSep,    offsetof(SEP, sbk),           // ipropSbk
+		 actnByte,   propSep,    offsetof(SEP, pgnFormat),     // ipropPgnFormat
+		 actnByte,   propDop,    offsetof(DOP, fFacingp),      // ipropFacingp
+		 actnByte,   propDop,    offsetof(DOP, fLandscape),    // ipropLandscape
+		 actnByte,   propPap,    offsetof(PAP, just),          // ipropJust
+		 actnSpec,   propPap,    0,                            // ipropPard
+		 actnSpec,   propChp,    0,                            // ipropPlain
+		 actnSpec,   propSep,    0,                            // ipropSectd
+		 actnSpec,   propSep,    0,                            // ipropPar
+		 actnSpec,   propSep,    0,                            // ipropTrowd
+		 actnSpec,   propSep,    0,                            // ipropTcelld
+		 actnSpec,   propSep,    0,                            // ipropSect
+		 actnSpec,   propSep,    0,                            // ipropRow
+		 actnSpec,   propSep,    0,                            // ipropCell
+		 actnWord,   propFnt,    offsetof(FONT, charset),      // ipropFcharset
+		 actnWord,   propFnt,    offsetof(FONT, fprq),         // ipropFprq
+		 actnByte,   propFnt,    offsetof(FONT, ftype),        // ipropFtype
+		 actnSpec,   propFnt,    0,                            // ipropFnum
+		 actnWord,   propCol,    offsetof(COLOR, red),         // ipropCred
+		 actnWord,   propCol,    offsetof(COLOR, green),       // ipropCgreen
+		 actnWord,   propCol,    offsetof(COLOR, blue),        // ipropCblue
+		 actnByte,   propFnt,    offsetof(FONT,  ffam),        // ipropFfam
+		 actnSpec,   propPap,    0,                            // ipropStyle
+		 actnSpec,   propSep,    0,                            // ipropDStyle
+		 actnWord,   propDate,   offsetof(DATE, year),         // ipropYear
+		 actnWord,   propDate,   offsetof(DATE, month),        // ipropMonth
+		 actnWord,   propDate,   offsetof(DATE, day),          // ipropDay
+		 actnWord,   propDate,   offsetof(DATE, hour),         // ipropHour
+		 actnWord,   propDate,   offsetof(DATE, min),          // ipropMin
+		 actnWord,   propDate,   offsetof(DATE, sec),          // ipropSec
+		 actnWord,   propPict,   offsetof(PICT, type),         // ipropPicttype
+		 actnSpec,   propPict,   0,                            // ipropOmf
+		 actnSpec,   propPict,   0,                            // ipropWmf
+		 actnSpec,   propPict,   0,                            // ipropIbitmap
+		 actnSpec,   propPict,   0,                            // ipropDbitmap
+		 actnLong,   propPict,   offsetof(PICT, w),            // ipropPictw
+		 actnLong,   propPict,   offsetof(PICT, h),            // ipropPicth
+		 actnLong,   propPict,   offsetof(PICT, goalw),        // ipropPictwgoal
+		 actnLong,   propPict,   offsetof(PICT, goalh),        // ipropPicthgoal
+		 actnWord,   propPict,   offsetof(PICT, scalex),       // ipropPictscalex
+		 actnWord,   propPict,   offsetof(PICT, scaley),       // ipropPictscaley
+		 actnByte,   propPict,   offsetof(PICT, scaled),       // ipropPictscaled
+		 actnSpec,   propPap,    0,                            // ipropUd
+		 actnWord,   propDop,    offsetof(DOP, version),       // ipropVersion
+		 actnWord,   propDop,    offsetof(DOP, npages),        // ipropNofpages
+		 actnWord,   propDop,    offsetof(DOP, nwords),        // ipropNofword
+		 actnWord,   propDop,    offsetof(DOP, nchars),        // ipropNofchars
+		 actnWord,   propDop,    offsetof(DOP, ncharsws),      // ipropNofcharsws
+		 actnWord,   propDop,    offsetof(DOP, id),            // ipropId
+		 actnWord,   propChp,    offsetof(CHP, size),          // ipropFsize
+		 actnWord,   propChp,    offsetof(CHP, fcolor),        // ipropFfcolor
+		 actnWord,   propChp,    offsetof(CHP, bcolor),        // ipropFbcolor
+		 actnWord,   propTrp,    offsetof(TRP, just),          // ipropRowjust
+		 actnByte,   propTrp,    offsetof(TRP, direction),     // ipropRowwrite
+		 actnSpec,   propTrp,    offsetof(TRP, trgaph),        // ipropRowgaph
+		 actnSpec,   propTrp,    offsetof(TRP, cellx),         // ipropCellx
+		 actnByte,   propTcp,    offsetof(TCP, clmgf),         // ipropClmgf
+		 actnByte,   propTcp,    offsetof(TCP, clmrg),         // ipropClmrg
+		 actnWord,   propTrp,    offsetof(TRP, trleft),        // ipropTrleft
+		 actnWord,   propTrp,    offsetof(TRP, trrh),          // ipropTrrh
+		 actnByte,   propTrp,    offsetof(TRP, header),        // ipropTrhdr
+		 actnByte,   propTrp,    offsetof(TRP, keep),          // ipropTrkeep
+		 actnByte,   propTrp,    offsetof(TRP, bordT),         // ipropTrbdrt
+		 actnByte,   propTrp,    offsetof(TRP, bordB),         // ipropTrbdrb
+		 actnByte,   propTrp,    offsetof(TRP, bordL),         // ipropTrbdrl
+		 actnByte,   propTrp,    offsetof(TRP, bordR),         // ipropTrbdrr
+		 actnByte,   propTrp,    offsetof(TRP, bordH),         // ipropTrbdrh
+		 actnByte,   propTrp,    offsetof(TRP, bordV),         // ipropTrbdrv
+		 actnByte,   propTcp,    offsetof(TCP, bordT),         // ipropClbrdrt
+		 actnByte,   propTcp,    offsetof(TCP, bordB),         // ipropClbrdrb
+		 actnByte,   propTcp,    offsetof(TCP, bordL),         // ipropClbrdrl
+		 actnByte,   propTcp,    offsetof(TCP, bordR),         // ipropClbrdrr
+		 actnWord,   propTcp,    offsetof(TCP, alignment),     // ipropCellaligm
+		 actnWord,   propTcp,    offsetof(TCP, shading),       // ipropCellshade
+		 actnWord,   propTcp,    offsetof(TCP, line_color),    // ipropCelllinecol
+		 actnWord,   propTcp,    offsetof(TCP, back_color),    // ipropCellbackcol
+		 actnWord,   propTcp,    offsetof(TCP, pattern),       // ipropCellpat
+
 };
 
 // Keyword descriptions
 SYM rgsymRtf[] = {
 //   keyword       dflt       fPassDflt   kwd              idx
 		 "b",          1,         fFalse,     kwdProp,         ipropBold,
+		 "clbgbdiag",  patBD,     fTrue,      kwdProp,         ipropCellpat,
+		 "clbgcross",  patC,      fTrue,      kwdProp,         ipropCellpat,
+		 "clbgdcross", patCD,     fTrue,      kwdProp,         ipropCellpat,
+		 "clbgdkbdiag",patDBD,    fTrue,      kwdProp,         ipropCellpat,
+		 "clbgdkcross",patDC,     fTrue,      kwdProp,         ipropCellpat,
+		 "clbgdkdcross",patDCD,   fTrue,      kwdProp,         ipropCellpat,
+		 "clbgdkfdiag",patDFD,    fTrue,      kwdProp,         ipropCellpat,
+		 "clbgdkhor",  patDH,     fTrue,      kwdProp,         ipropCellpat,
+		 "clbgdkvert", patDV,     fTrue,      kwdProp,         ipropCellpat,
+		 "clbgfdiag",  patFD,     fTrue,      kwdProp,         ipropCellpat,
+		 "clbghoriz",  patH,      fTrue,      kwdProp,         ipropCellpat,
+		 "clbgvert",   patV,      fTrue,      kwdProp,         ipropCellpat,
+		 "clbrdrb",    1,         fTrue,      kwdProp,         ipropClbrdrb,
+		 "clbrdrl",    1,         fTrue,      kwdProp,         ipropClbrdrl,
+		 "clbrdrr",    1,         fTrue,      kwdProp,         ipropClbrdrr,
+		 "clbrdrt",    1,         fTrue,      kwdProp,         ipropClbrdrt,
+		 "cltxlrtb",   aligmVL,   fTrue,      kwdProp,         ipropCellaligm,
+		 "cltxtbrl",   aligmVR,   fTrue,      kwdProp,         ipropCellaligm,
+		 "clvertalb",  aligmB,    fTrue,      kwdProp,         ipropCellaligm,
+		 "clvertalc",  aligmC,    fTrue,      kwdProp,         ipropCellaligm,
+		 "clvertalt",  aligmT,    fTrue,      kwdProp,         ipropCellaligm,
 		 "ds",         0,         fFalse,     kwdProp,         ipropDStyle,
 		 "i",          1,         fFalse,     kwdProp,         ipropItalic,
 		 "s",          0,         fFalse,     kwdProp,         ipropStyle,
+		 "trgaph",     0,         fFalse,     kwdProp,         ipropRowgaph,
+		 "trql",       justL,     fTrue,      kwdProp,         ipropRowjust,
+		 "ud",         0,         fFalse,     kwdProp,         ipropUd,
 		 "ul",         1,         fFalse,     kwdProp,         ipropUnderline,
+		 "upr",        0,         fFalse,     kwdDest,         idestSkip,
 	   "'",          0,         fFalse,     kwdSpec,         ipfnHex,
 	   "*",          0,         fFalse,     kwdSpec,         ipfnSkipDest,
 	   "\0x0a",      0,         fFalse,     kwdChar,         0x0a,
@@ -290,19 +369,26 @@ SYM rgsymRtf[] = {
 	   "bin",        0,         fFalse,     kwdSpec,         ipfnBin,
 	   "blue",       0,         fFalse,     kwdProp,         ipropCblue,
 	   "buptim",     0,         fFalse,     kwdDest,         idestBuptim,
+	   "category",   0,         fFalse,     kwdDest,         idestCategory,
+	   "cb",         0,         fFalse,     kwdProp,         ipropFbcolor,
 	   "cell",       0,         fFalse,     kwdProp,         ipropCell,
+	   "cellx",      0,         fFalse,     kwdProp,         ipropCellx,
+	   "cf",         0,         fFalse,     kwdProp,         ipropFfcolor,
+	   "clcbpat",    0,         fFalse,     kwdProp,         ipropCellbackcol,
+	   "clcfpat",    0,         fFalse,     kwdProp,         ipropCelllinecol,
+	   "clmgf",      1,         fTrue,      kwdProp,         ipropClmgf,
+	   "clmrg",      1,         fTrue,      kwdProp,         ipropClmrg,
+	   "clshdng",    0,         fFalse,     kwdProp,         ipropCellshade,
 	   "colortbl",   0,         fFalse,     kwdDest,         idestCol,
 	   "cols",       1,         fFalse,     kwdProp,         ipropCols,
 	   "comment",    0,         fFalse,     kwdDest,         idestComment,
+	   "company",    0,         fFalse,     kwdDest,         idestCompany,
 	   "creatim",    0,         fFalse,     kwdDest,         idestCreatim,
 	   "dibitmap",   0,         fFalse,     kwdProp,         ipropIbitmap,
 	   "doccomm",    0,         fFalse,     kwdDest,         idestDoccomm,
 	   "dy",         0,         fFalse,     kwdProp,         ipropDay,
 	   "emfblip",    pict_emf,  fTrue,      kwdProp,         ipropPicttype,
 	   "f",          0,         fFalse,     kwdProp,         ipropFnum,
-	   "fs",          0,         fFalse,     kwdProp,         ipropFsize,
-	   "cf",          0,         fFalse,     kwdProp,         ipropFfcolor,
-	   "cb",          0,         fFalse,     kwdProp,         ipropFbcolor,
 	   "facingp",    1,         fTrue,      kwdProp,         ipropFacingp,
 	   "falt",       0,         fFalse,     kwdDest,         idestFalt,
 	   "fbidi",      fbidi,     fTrue,      kwdProp,         ipropFfam,
@@ -316,9 +402,10 @@ SYM rgsymRtf[] = {
 	   "footerf",    0,         fFalse,     kwdDest,         idestSkip,
 	   "footerl",    0,         fFalse,     kwdDest,         idestSkip,
 	   "footerr",    0,         fFalse,     kwdDest,         idestSkip,
-	   "footnote",   0,         fFalse,     kwdDest,         idestSkip,
+	   "footnote",   0,         fFalse,     kwdDest,         idestFootnote,
 	   "fprq",       0,         fFalse,     kwdProp,         ipropFprq,
 	   "froman",     froman,    fTrue,      kwdProp,         ipropFfam,
+	   "fs",         0,         fFalse,     kwdProp,         ipropFsize,
 	   "fscript",    fscript,   fTrue,      kwdProp,         ipropFfam,
 	   "fswiss",     fswiss,    fTrue,      kwdProp,         ipropFfam,
 	   "ftech",      ftech,     fTrue,      kwdProp,         ipropFfam,
@@ -331,13 +418,16 @@ SYM rgsymRtf[] = {
 	   "headerf",    0,         fFalse,     kwdDest,         idestSkip,
 	   "headerl",    0,         fFalse,     kwdDest,         idestSkip,
 	   "headerr",    0,         fFalse,     kwdDest,         idestSkip,
+	   "hlinkbase",  0,         fFalse,     kwdDest,         idestHlinkbase,
 	   "hr",         0,         fFalse,     kwdProp,         ipropHour,
+	   "id",         0,         fFalse,     kwdProp,         ipropId,
 	   "info",       0,         fFalse,     kwdDest,         idestInfo,
 	   "jpegblip",   pict_jpg,  fTrue,      kwdProp,         ipropPicttype,
 	   "keywords",   0,         fFalse,     kwdDest,         idestKeywords,
 	   "landscape",  1,         fTrue,      kwdProp,         ipropLandscape,
 	   "ldblquote",  0,         fFalse,     kwdChar,         '"',
 	   "li",         0,         fFalse,     kwdProp,         ipropLeftInd,
+	   "ltlrow",     fFalse,    fTrue,      kwdProp,         ipropRowwrite,
 	   "macpict",    pict_mac,  fTrue,      kwdProp,         ipropPicttype,
 	   "margb",      1440,      fFalse,     kwdProp,         ipropYaBottom,
 	   "margl",      1800,      fFalse,     kwdProp,         ipropXaLeft,
@@ -345,6 +435,10 @@ SYM rgsymRtf[] = {
 	   "margt",      1440,      fFalse,     kwdProp,         ipropYaTop,
 	   "min",        0,         fFalse,     kwdProp,         ipropMin,
 	   "mo",         0,         fFalse,     kwdProp,         ipropMonth,
+	   "nofchars",   0,         fFalse,     kwdProp,         ipropNofchars,
+	   "nofcharsws", 0,         fFalse,     kwdProp,         ipropNofcharsws,
+	   "nofpages",   0,         fFalse,     kwdProp,         ipropNofpages,
+	   "nofwords",   0,         fFalse,     kwdProp,         ipropNofword,
 	   "nonshppict", 0,         fFalse,     kwdDest,         idestSkip,
 	   "operator",   0,         fFalse,     kwdDest,         idestOperator,
 	   "paperh",     15480,     fFalse,     kwdProp,         ipropYaPage,
@@ -380,6 +474,7 @@ SYM rgsymRtf[] = {
 	   "revtim",     0,         fFalse,     kwdDest,         idestRevtim,
 	   "ri",         0,         fFalse,     kwdProp,         ipropRightInd,
 	   "row",        0,         fFalse,     kwdProp,         ipropRow,
+	   "rtlrow",     fTrue,     fTrue,      kwdProp,         ipropRowwrite,
 	   "rxe",        0,         fFalse,     kwdDest,         idestSkip,
 	   "sbkcol",     sbkCol,    fTrue,      kwdProp,         ipropSbk,
 	   "sbkeven",    sbkEvn,    fTrue,      kwdProp,         ipropSbk,
@@ -396,26 +491,28 @@ SYM rgsymRtf[] = {
 	   "tc",         0,         fFalse,     kwdDest,         idestSkip,
 	   "tcelld",     0,         fFalse,     kwdProp,         ipropTcelld,
 	   "title",      0,         fFalse,     kwdDest,         idestTitle,
+	   "trbrdrb",    1,         fTrue,      kwdProp,         ipropTrbrdrb,
+	   "trbrdrh",    1,         fTrue,      kwdProp,         ipropTrbrdrh,
+	   "trbrdrl",    1,         fTrue,      kwdProp,         ipropTrbrdrl,
+	   "trbrdrr",    1,         fTrue,      kwdProp,         ipropTrbrdrr,
+	   "trbrdrt",    1,         fTrue,      kwdProp,         ipropTrbrdrt,
+	   "trbrdrv",    1,         fTrue,      kwdProp,         ipropTrbrdrv,
+	   "trhdr",      1,         fTrue,      kwdProp,         ipropTrhdr,
+	   "trkeep",     1,         fTrue,      kwdProp,         ipropTrkeep,
+	   "trleft",     0,         fFalse,     kwdProp,         ipropTrleft,
 	   "trowd",      0,         fFalse,     kwdProp,         ipropTrowd,
+	   "trqc",       justC,     fTrue,      kwdProp,         ipropRowjust,
+	   "trqr",       justR,     fTrue,      kwdProp,         ipropRowjust,
+	   "trrh",       0,         fFalse,     kwdProp,         ipropTrrh,
 	   "txe",        0,         fFalse,     kwdDest,         idestSkip,
 	   "u",          0,         fFalse,     kwdUTF,          0,
-		 "ud",         0,         fFalse,     kwdProp,         ipropUd,
-		 "upr",         0,         fFalse,     kwdDest,         idestSkip,
+	   "version",    0,         fFalse,     kwdProp,         ipropVersion,
 	   "wbitmap",    0,         fFalse,     kwdProp,         ipropDbitmap,
 	   "wmetafile",  0,         fFalse,     kwdProp,         ipropWmf,
 	   "xe",         0,         fFalse,     kwdDest,         idestSkip,
 	   "yr",         0,         fFalse,     kwdProp,         ipropYear,
 	   "{",          0,         fFalse,     kwdChar,         '{',
 	   "}",          0,         fFalse,     kwdChar,         '}',
-	   "company",     0,         fFalse,     kwdDest,         idestCompany,
-	   "category",     0,         fFalse,     kwdDest,         idestCategory,
-	   "version",          0,         fFalse,     kwdProp,         ipropVersion,
-	   "hlinkbase",          0,         fFalse,     kwdDest,         idestHlinkbase,
-	   "nofpages",          0,         fFalse,     kwdProp,         ipropNofpages,
-	   "nofwords",          0,         fFalse,     kwdProp,         ipropNofword,
-	   "nofchars",          0,         fFalse,     kwdProp,         ipropNofchars,
-	   "nofcharsws",          0,         fFalse,     kwdProp,         ipropNofcharsws,
-	   "id",          0,         fFalse,     kwdProp,         ipropId,
 	 	};
 
 // Parser vars
@@ -594,16 +691,22 @@ ecParseSpecialProperty(IPROP iprop, int val)
 			else
 				prop->chp.font = val;
 			return ecOK;
+
+		case ipropRowgaph:
+			prop->trp.trgaph[prop->trp.ntrgaph++] = val;
+		
+		case ipropCellx:
+			prop->trp.cellx[prop->trp.ncellx++] = val;
 		
 		case ipropPar:
 			if (no->par_cb)
-				no->par_cb(no->udata);
+				no->par_cb(no->udata, &prop->pap);
 			//ecPrintChar(0x0a); // print new line
 			return ecOK;
 		
 		case ipropSect:
 			if (no->sect_cb)
-				no->sect_cb(no->udata);
+				no->sect_cb(no->udata, &prop->sep);
 			return ecOK;
 		
 		case ipropRow:
@@ -745,6 +848,12 @@ ecChangeDest(IDEST idest)
 		
 		case idestInfo:
 			rds = rdsInfo;
+			break;
+		
+		case idestFootnote:
+			rds = rdsFootnote;
+			if (no->foot_cb)
+				no->foot_cb(no->udata, 1);
 			break;
 		
 		case idestTitle:
@@ -918,6 +1027,11 @@ ecEndGroupAction(RDS rds)
 		if (no->date_cb)
 			no->date_cb(no->udata, tdate, &date);
 		return ecOK;
+	}
+
+	if (rds == rdsFootnote){
+		if (no->foot_cb)
+			no->foot_cb(no->udata, 0);
 	}
 
 	return ecOK;
@@ -1167,8 +1281,6 @@ ecParseRtfKeyword(FILE *fp)
 			return ecEndOfFile;
 	}
 
-	//printf("CW: %s\n", szKeyword);
-
 	if (isdigit(ch))
 	{
 		// a digit after the control means we have a parameter
@@ -1188,6 +1300,9 @@ ecParseRtfKeyword(FILE *fp)
 		if (fNeg)
 			param = -param;
 	}
+
+	if (no->command_cb)
+		no->command_cb(no->udata, szKeyword, param, fParam);
 	
 	if (ch != ' ')
 		ungetc(ch, fp);
@@ -1341,6 +1456,6 @@ int
 ecPrintChar(int ch)
 {
 	if (no->char_cb)
-		no->char_cb(no->udata, ch);
+		no->char_cb(no->udata, ch, &prop->chp);
 	return ecOK;
 }

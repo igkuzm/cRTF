@@ -111,50 +111,68 @@ typedef struct sect_prop
 	int ds;           // section style
 } SEP;              // SEction Properties
 
-
-/* table row borders */
-typedef	struct tbr_borders {
-	char top;
-	char left;
-	char bottom;
-	char right;
-	char horizontal;
-	char vertical;
-} TRB;
-
-/* table cell borders */
-typedef	struct tbc_borders {
-	char top;
-	char left;
-	char bottom;
-	char right;
-} TCB;
+/* table cell pattern */
+typedef enum tbc_pattern {
+	patH,             // horizontal background pattern for the cell
+	patV,							// vertical background pattern for the cells
+	patFD,						// forward diagonal background pattern for the cell (\\\\) 
+	patBD,						// backward diagonal background pattern for the cell (////)
+	patC,							// cross background pattern
+	patCD,						// diagonal cross background pattern
+	patDH,						// dark horizontal background
+	patDV,						// dark vertical background pattern
+	patDFD,           // dark forward diagonal background pattern
+	patDBD,           // dark backward diagonal background pattern
+	patDC,						// dark cross background pattern
+	patDCD,						// dark diagonal cross background pattern
+} TPA;
 
 /* table cell alignment */
-typedef	struct tbc_alignment {
-	char top;
-	char centred;
-	char bottom;
-	char lvertical;
-	char rvertical;
+typedef	enum tbc_alignment {
+	aligmT,           // Text is top-aligned in cell (the default) 
+	aligmC,           // Text is centered vertically in cell
+	aligmB,           // Text is bottom-aligned in cell
+	aligmVL,          // Vertical text aligned left (direction bottom up)
+	aligmVR,          // Vertical text aligned right (direction top down)
 } TCA;
 
 /* table row properties */
 typedef struct tbr_prop {
 	JUST just;
 	int  trgaph[32];  // space bitwin cells
+	int  ntrgaph;     // number of items in trgaph
 	int  cellx[32];   // size of cell (right boundary)
+	int  ncellx;      // number of items in cellx
 	int  trrh;        // table row height
-	TRB  borders;
+	int  trleft;      // Position of the leftmost edge of the 
+										// table with respect to the left
+										// edge of its column
+	char bordT;       // border top
+	char bordB;       // border bottom
+	char bordL;       // border left
+	char bordR;       // border right
+	char bordH;       // border Horizontal
+	char bordV;       // border Vertical
+	
 	char header;      // this row is header
 	char keep;        // keep this row from pagebreak
+	char direction;   // 0 - left-to right, 1 - right to left
 } TRP;
 
 /* table cell properties */
 typedef struct tbc_prop {
 	TCA  alignment;
-	TCB  borders;
-	char direction;   // 0 - left-to right, 1 - right to left
+	TPA  pattern;
+	int  shading;     // shading of a table cell in hundredths of a percent
+	int  line_color;
+	int  back_color;
+	char bordT;       // border top
+	char bordB;       // border bottom
+	char bordL;       // border left
+	char bordR;       // border right
+	char clmgf;       // The first cell in a range of table cells to be merged
+	char clmrg;       // Contents of the table cell are merged with those of the 
+										// preceding cell
 } TCP;
 
 /* charset */

@@ -251,7 +251,7 @@ PROP rgprop [ipropMax] = {
 		 actnByte,   propSep,    offsetof(SEP, pgnFormat),     // ipropPgnFormat
 		 actnByte,   propDop,    offsetof(DOP, fFacingp),      // ipropFacingp
 		 actnByte,   propDop,    offsetof(DOP, fLandscape),    // ipropLandscape
-		 actnByte,   propPap,    offsetof(PAP, just),          // ipropJust
+		 actnWord,   propPap,    offsetof(PAP, just),          // ipropJust
 		 actnSpec,   propPap,    0,                            // ipropPard
 		 actnSpec,   propChp,    0,                            // ipropPlain
 		 actnSpec,   propSep,    0,                            // ipropSectd

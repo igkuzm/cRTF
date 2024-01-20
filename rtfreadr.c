@@ -513,6 +513,7 @@ SYM rgsymRtf[] = {
 	   "yr",         0,         fFalse,     kwdProp,         ipropYear,
 	   "{",          0,         fFalse,     kwdChar,         '{',
 	   "}",          0,         fFalse,     kwdChar,         '}',
+	   "list",       0,         fFalse,     kwdDest,         idestSkip,
 	 	};
 
 // Parser vars

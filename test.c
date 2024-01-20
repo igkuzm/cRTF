@@ -10,6 +10,9 @@
 #include "rtfreadr.h"
 #include "rtftype.h"
 #include <string.h>
+#include "str.h"
+
+struct str str;
 
 int info_cb(void *d, INFO_T t, const char *s)
 {
@@ -35,13 +38,15 @@ int font_cb(void *d, FONT *f)
 	return 0;
 }
 
-int char_cb(void *d, int ch)
+int char_cb(void *d, int ch, CHP *p)
 {
 	putchar(ch);
+	char c = ch;
+	str_append(&str, &c, 1);
 	return 0;
 }
 
-int par_cb(void *d)
+int par_cb(void *d, PAP *p)
 {
 	printf("par\n");
 	return 0;
@@ -68,11 +73,13 @@ int main(int argc, char *argv[])
 	rnotify_t n;
 	memset(&(n), 0, sizeof(rnotify_t));
 
-	//n.font_cb = font_cb;
-	//n.char_cb = char_cb;
-	//n.par_cb = par_cb;
-	//n.style_cb = style_cb;
-	//n.par_cb = par_cb;
+	str_init(&str, BUFSIZ);
+
+	n.font_cb = font_cb;
+	n.char_cb = char_cb;
+	n.par_cb = par_cb;
+	n.style_cb = style_cb;
+	n.par_cb = par_cb;
 	n.pict_cb = pict_cb;
 	n.info_cb = info_cb;
 	n.date_cb = date_cb;

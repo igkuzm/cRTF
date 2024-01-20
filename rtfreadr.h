@@ -53,7 +53,7 @@ typedef struct rtfnotify {
 	int (*row_cb)    (void *udata, TRP *rp);
 	int (*cell_cb)   (void *udata, TRP *rp, TCP *cp);
 	int (*char_cb)   (void *udata, int ch, CHP *p);
-	int (*pict_cb)   (void *udata, PICT *p);
+	int (*pict_cb)   (void *udata, PICT *pict, PAP *p);
 	int (*foot_cb)   (void *udata, int start);
 } rnotify_t;
 

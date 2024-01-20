@@ -1010,7 +1010,7 @@ ecEndGroupAction(RDS rds)
 			}
 			// do callback
 			if (no->pict_cb)
-				no->pict_cb(no->udata, &pict);
+				no->pict_cb(no->udata, &pict, &prop->pap);
 
 			free(img.str);
 			free(pict.data);

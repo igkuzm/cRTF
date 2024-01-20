@@ -712,12 +712,12 @@ ecParseSpecialProperty(IPROP iprop, int val)
 		
 		case ipropRow:
 			if (no->row_cb)
-				no->row_cb(no->udata);
+				no->row_cb(no->udata, &prop->trp);
 			return ecOK;
 		
 		case ipropCell:
 			if (no->cell_cb)
-				no->cell_cb(no->udata);
+				no->cell_cb(no->udata, &prop->trp, &prop->tcp);
 			return ecOK;
 
 		case ipropStyle:

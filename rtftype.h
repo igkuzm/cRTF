@@ -2,7 +2,7 @@
  * File              : rtftype.h
  * Author            : Igor V. Sementsov <ig.kuzm@gmail.com>
  * Date              : 17.01.2024
- * Last Modified Date: 20.01.2024
+ * Last Modified Date: 21.01.2024
  * Last Modified By  : Igor V. Sementsov <ig.kuzm@gmail.com>
  */
 
@@ -14,15 +14,17 @@
 
 /* fonts */
 typedef enum {
-	fnil,              // Unknown or default fonts (the default) 
-	froman,            // Roman, proportionally spaced serif fonts
+	fnil,              // Unknown or default fonts (the 
+										 // default) 
+	froman,            // Roman, proportionally spaced serif 
+										 // fonts
 	fswiss,
 	fmodern,
 	fscript,
 	fdecor,
 	ftech,
-	fbidi,             // Arabic, Hebrew, or other bidirectional font
-
+	fbidi,             // Arabic, Hebrew, or other 
+										 // bidirectional font
 } FFAM;              // font family
 										 
 // Specifies the pitch of a font in the font table. 
@@ -192,6 +194,31 @@ typedef struct rtf_date {
 	int   sec;
 } DATE;
 
+// footnotes/endnotes type
+typedef enum {
+	fetT,  // 0 Footnotes only or nothing at all (the default)
+  fetE,  // 1 Endnotes only.                                
+  fetTE  // 2 Footnotes and endnotes both.                  	
+}FET;
+
+// footnotes/endnotes position
+typedef enum {
+  fepEOS,   // at the end of the section (the default)
+  fepEOD,   // at the end of the document
+	fepT,			// beneath text (top justified)
+	fepB,			// at the bottom of the page (bottom justified)  
+} FEP;
+
+// footnotes/endnotes numbering
+typedef enum {
+	fenN,     // Arabic numbering (1, 2, 3, ...)
+	fenAl,		// Alphabetic lowercase (a, b, c, ...) 
+	fenAu,		// Alphabetic uppercase (A, B, C, ...) 
+	fenRl,		// Roman lowercase (i, ii, iii, ...)  
+	fenRu,		// Roman uppercase (I, II, III, ...)
+	fenChi,		// Chicago Manual of Style (*, [dagger], [daggerdbl], )  
+} FEN;
+
 /* Document properties */
 typedef struct doc_prop
 {
@@ -206,7 +233,7 @@ typedef struct doc_prop
 	char  fLandscape; // landscape or portrait??
 	int   deflang;    // Default language
 	int   deff;       // Default font
-	int   defftab;    // Default tab width
+	int   deftab;     // Default tab width
 	int   version;    // document version
 	int   vern;       // internal version
 	int   emin;       // Total editing time (in minutes) 
@@ -216,6 +243,17 @@ typedef struct doc_prop
 	int   ncharsws;   // Number of characters not including spaces
 	int   id;         // Internal ID number 
 	CHSET chset;      // charset
+	FET   fet;		    // Footnote/endnote type 
+	FEP   fp;         // footnotes position
+	FEP   ep;         // endnotes position
+	int   fb;         // Beginning footnote number (the default is 1)
+	int   eb;			  	// Beginning endnote number (the default is 1) 
+	int   fr;         // Continuous footnote numbering - 0, restart each page - 1
+	int   er;         // Continuous endnote numbering - 0, restart each page - 1
+	FEN   fn;			  	// Footnote numbering 
+	FEN   en;			  	// Endnote numbering
+	int		gutter;			// Gutter width in twips (the default is 0) 
+	char 	fMirror; 		// Switches margin definitions on left and right pages 
 } DOP;							// DOcument Properties
 
 typedef	struct style {

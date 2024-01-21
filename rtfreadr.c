@@ -2,7 +2,7 @@
  * File              : rtfreadr.c
  * Author            : Igor V. Sementsov <ig.kuzm@gmail.com>
  * Date              : 17.01.2024
- * Last Modified Date: 20.01.2024
+ * Last Modified Date: 21.01.2024
  * Last Modified By  : Igor V. Sementsov <ig.kuzm@gmail.com>
  */
 #include <stdio.h>
@@ -76,12 +76,8 @@ typedef enum {
 	ipropPard, 
 	ipropPlain, 
 	ipropSectd,
-	ipropPar, 
 	ipropTrowd, 
 	ipropTcelld, 
-	ipropSect, 
-	ipropRow, 
-	ipropCell, 
 	ipropFcharset,
 	ipropFprq,
 	ipropFtype,
@@ -145,6 +141,19 @@ typedef enum {
 	ipropCelllinecol,
 	ipropCellbackcol,
 	ipropCellpat,
+	ipropDeftab,
+	ipropDeflang,
+	ipropFet,
+	ipropFp,
+	ipropEp,
+	ipropFtnstart,
+	ipropAftnstart,
+  ipropFtnrestart,
+  ipropAftnrestart,
+	ipropFtnn,
+	ipropAftnn,
+	ipropGutter,
+	ipropMargirror,
 
 	ipropMax
 } IPROP;
@@ -255,12 +264,8 @@ PROP rgprop [ipropMax] = {
 		 actnSpec,   propPap,    0,                            // ipropPard
 		 actnSpec,   propChp,    0,                            // ipropPlain
 		 actnSpec,   propSep,    0,                            // ipropSectd
-		 actnSpec,   propSep,    0,                            // ipropPar
 		 actnSpec,   propSep,    0,                            // ipropTrowd
 		 actnSpec,   propSep,    0,                            // ipropTcelld
-		 actnSpec,   propSep,    0,                            // ipropSect
-		 actnSpec,   propSep,    0,                            // ipropRow
-		 actnSpec,   propSep,    0,                            // ipropCell
 		 actnWord,   propFnt,    offsetof(FONT, charset),      // ipropFcharset
 		 actnWord,   propFnt,    offsetof(FONT, fprq),         // ipropFprq
 		 actnByte,   propFnt,    offsetof(FONT, ftype),        // ipropFtype
@@ -324,6 +329,19 @@ PROP rgprop [ipropMax] = {
 		 actnWord,   propTcp,    offsetof(TCP, line_color),    // ipropCelllinecol
 		 actnWord,   propTcp,    offsetof(TCP, back_color),    // ipropCellbackcol
 		 actnWord,   propTcp,    offsetof(TCP, pattern),       // ipropCellpat
+		 actnWord,   propDop,    offsetof(DOP, deftab),        // ipropDeftab
+		 actnWord,   propDop,    offsetof(DOP, deflang),       // ipropDeflang
+		 actnWord,   propDop,    offsetof(DOP, fet),           // ipropFet
+		 actnWord,   propDop,    offsetof(DOP, fp),            // ipropFp
+		 actnWord,   propDop,    offsetof(DOP, ep),            // ipropEp
+		 actnWord,   propDop,    offsetof(DOP, fb),            // ipropFtnstart
+		 actnWord,   propDop,    offsetof(DOP, eb),            // ipropAftnstart
+		 actnByte,   propTcp,    offsetof(DOP, fr),            // ipropFtnrestart,
+		 actnByte,   propTcp,    offsetof(DOP, er),            // ipropAftnrestart,
+		 actnWord,   propDop,    offsetof(DOP, fn),            // ipropFtnn
+		 actnWord,   propDop,    offsetof(DOP, en),            // ipropAftnn
+		 actnWord,   propDop,    offsetof(DOP, gutter),        // ipropGutter
+		 actnByte,   propTcp,    offsetof(DOP, fMirror),       // ipropMargirror
 
 };
 
@@ -371,7 +389,7 @@ SYM rgsymRtf[] = {
 	   "buptim",     0,         fFalse,     kwdDest,         idestBuptim,
 	   "category",   0,         fFalse,     kwdDest,         idestCategory,
 	   "cb",         0,         fFalse,     kwdProp,         ipropFbcolor,
-	   "cell",       0,         fFalse,     kwdProp,         ipropCell,
+	   "cell",       0,         fFalse,     kwdChar,         CELL,
 	   "cellx",      0,         fFalse,     kwdProp,         ipropCellx,
 	   "cf",         0,         fFalse,     kwdProp,         ipropFfcolor,
 	   "clcbpat",    0,         fFalse,     kwdProp,         ipropCellbackcol,
@@ -409,9 +427,12 @@ SYM rgsymRtf[] = {
 	   "fscript",    fscript,   fTrue,      kwdProp,         ipropFfam,
 	   "fswiss",     fswiss,    fTrue,      kwdProp,         ipropFfam,
 	   "ftech",      ftech,     fTrue,      kwdProp,         ipropFfam,
-	   "ftncn",      0,         fFalse,     kwdDest,         idestSkip,
-	   "ftnsep",     0,         fFalse,     kwdDest,         idestSkip,
-	   "ftnsepc",    0,         fFalse,     kwdDest,         idestSkip,
+	   "ftncn",      0,         fFalse,     kwdChar,         FTNCN,
+	   "ftnsep",     0,         fFalse,     kwdChar,         FTNSEP,
+	   "ftnsepc",    0,         fFalse,     kwdChar,         FTNSEPC,
+	   "aftncn",     0,         fFalse,     kwdChar,         AFTNCN,
+	   "aftnsep",    0,         fFalse,     kwdChar,         AFTNSEP,
+	   "aftnsepc",   0,         fFalse,     kwdChar,         AFTNSEPC,
 	   "fttruetype", 1,         fFalse,     kwdProp,         ipropFtype,
 	   "green",      0,         fFalse,     kwdProp,         ipropCgreen,
 	   "header",     0,         fFalse,     kwdDest,         idestSkip,
@@ -443,7 +464,8 @@ SYM rgsymRtf[] = {
 	   "operator",   0,         fFalse,     kwdDest,         idestOperator,
 	   "paperh",     15480,     fFalse,     kwdProp,         ipropYaPage,
 	   "paperw",     12240,     fFalse,     kwdProp,         ipropXaPage,
-	   "par",        0,         fFalse,     kwdProp,         ipropPar,
+	   "par",        0,         fFalse,     kwdChar,         PAR,
+	   "ls",         0,         fFalse,     kwdChar,         LIST,
 	   "pard",       0,         fFalse,     kwdProp,         ipropPard,
 	   "pgndec",     pgDec,     fTrue,      kwdProp,         ipropPgnFormat,
 	   "pgnlcltr",   pgLLtr,    fTrue,      kwdProp,         ipropPgnFormat,
@@ -473,7 +495,7 @@ SYM rgsymRtf[] = {
 	   "red",        0,         fFalse,     kwdProp,         ipropCred,
 	   "revtim",     0,         fFalse,     kwdDest,         idestRevtim,
 	   "ri",         0,         fFalse,     kwdProp,         ipropRightInd,
-	   "row",        0,         fFalse,     kwdProp,         ipropRow,
+	   "row",        0,         fFalse,     kwdChar,         ROW,
 	   "rtlrow",     fTrue,     fTrue,      kwdProp,         ipropRowwrite,
 	   "rxe",        0,         fFalse,     kwdDest,         idestSkip,
 	   "sbkcol",     sbkCol,    fTrue,      kwdProp,         ipropSbk,
@@ -482,7 +504,7 @@ SYM rgsymRtf[] = {
 	   "sbkodd",     sbkOdd,    fTrue,      kwdProp,         ipropSbk,
 	   "sbkpage",    sbkPg,     fTrue,      kwdProp,         ipropSbk,
 	   "sec",        0,         fFalse,     kwdProp,         ipropSec,
-	   "sect",       0,         fFalse,     kwdProp,         ipropSect,
+	   "sect",       0,         fFalse,     kwdChar,         SECT,
 	   "shpinst",    0,         fFalse,     kwdDest,         idestShppict,
 	   "shppict",    0,         fFalse,     kwdDest,         idestShppict,
 	   "stylesheet", 0,         fFalse,     kwdDest,         idestStyle,
@@ -514,6 +536,38 @@ SYM rgsymRtf[] = {
 	   "{",          0,         fFalse,     kwdChar,         '{',
 	   "}",          0,         fFalse,     kwdChar,         '}',
 	   "list",       0,         fFalse,     kwdDest,         idestSkip,
+	   "deftab",     0,         fFalse,     kwdProp,         ipropDeftab,
+	   "deflang",    0,         fFalse,     kwdProp,         ipropDeflang,
+	   "fet",        0,         fFalse,     kwdProp,         ipropFet,
+	   "endnotes",   fepEOS,    fTrue,      kwdProp,         ipropFp,
+	   "enddoc",     fepEOD,    fTrue,      kwdProp,         ipropFp,
+	   "ftntj",      fepT,      fTrue,      kwdProp,         ipropFp,
+	   "ftnbj",      fepB,      fTrue,      kwdProp,         ipropFp,
+	   "aendnotes",  fepEOS,    fTrue,      kwdProp,         ipropEp,
+	   "aenddoc",    fepEOD,    fTrue,      kwdProp,         ipropEp,
+	   "aftntj",     fepT,      fTrue,      kwdProp,         ipropEp,
+	   "aftnbj",     fepB,      fTrue,      kwdProp,         ipropEp,
+	   "ftnstart",   1,         fFalse,     kwdProp,         ipropFtnstart,
+	   "aftnstart",  1,         fFalse,     kwdProp,         ipropAftnstart,
+	   "ftnrstpg",   1,         fFalse,     kwdProp,         ipropFtnrestart,
+	   "ftnrestart", 1,         fFalse,     kwdProp,         ipropFtnrestart,
+	   "ftnrstcont", 0,         fFalse,     kwdProp,         ipropFtnrestart,
+	   "aftnrestart",1,         fFalse,     kwdProp,         ipropAftnrestart,
+	   "aftnrstcont",0,         fFalse,     kwdProp,         ipropAftnrestart,
+	   "ftnnar",     fenN,      fTrue,      kwdProp,         ipropFtnn,
+	   "ftnnalc",    fenAl,     fTrue,      kwdProp,         ipropFtnn,
+	   "ftnnauc",    fenAu,     fTrue,      kwdProp,         ipropFtnn,
+	   "ftnnrlc",    fenRl,     fTrue,      kwdProp,         ipropFtnn,
+	   "ftnnruc",    fenRu,     fTrue,      kwdProp,         ipropFtnn,
+	   "ftnnchi",    fenChi,    fTrue,      kwdProp,         ipropFtnn,
+	   "aftnnar",    fenN,      fTrue,      kwdProp,         ipropAftnn,
+	   "aftnnalc",   fenAl,     fTrue,      kwdProp,         ipropAftnn,
+	   "aftnnauc",   fenAu,     fTrue,      kwdProp,         ipropAftnn,
+	   "aftnnrlc",   fenRl,     fTrue,      kwdProp,         ipropAftnn,
+	   "aftnnruc",   fenRu,     fTrue,      kwdProp,         ipropAftnn,
+	   "aftnnchi",   fenChi,    fTrue,      kwdProp,         ipropAftnn,
+	   "gutter",     0,         fFalse,     kwdProp,         ipropGutter,
+	   "margmirror", 1,         fTrue,      kwdProp,         ipropMargirror,
 	 	};
 
 // Parser vars
@@ -531,7 +585,7 @@ FILE *fpIn;
 
 PICT pict;
 
-rprop_t *prop;
+prop_t *prop;
 rnotify_t *no;
 
 // STYLESHEET
@@ -541,11 +595,11 @@ int nstyles;
 // INFO
 char info[BUFSIZ] = {0};
 int  linfo = 0;
-INFO_T tinfo;
+tINFO tinfo;
 
 // DATE
 DATE date;
-DATE_T tdate;
+tDATE tdate;
 
 // RTF parser declarations
 int ecPushRtfState(void);
@@ -699,27 +753,6 @@ ecParseSpecialProperty(IPROP iprop, int val)
 		case ipropCellx:
 			prop->trp.cellx[prop->trp.ncellx++] = val;
 		
-		case ipropPar:
-			if (no->par_cb)
-				no->par_cb(no->udata, &prop->pap);
-			//ecPrintChar(0x0a); // print new line
-			return ecOK;
-		
-		case ipropSect:
-			if (no->sect_cb)
-				no->sect_cb(no->udata, &prop->sep);
-			return ecOK;
-		
-		case ipropRow:
-			if (no->row_cb)
-				no->row_cb(no->udata, &prop->trp);
-			return ecOK;
-		
-		case ipropCell:
-			if (no->cell_cb)
-				no->cell_cb(no->udata, &prop->trp, &prop->tcp);
-			return ecOK;
-
 		case ipropStyle:
 			if (rds == rdsStyle) // add to stylesheet
 				stylesheet[nstyles].s = val;
@@ -853,8 +886,6 @@ ecChangeDest(IDEST idest)
 		
 		case idestFootnote:
 			rds = rdsFootnote;
-			if (no->foot_cb)
-				no->foot_cb(no->udata, 1);
 			break;
 		
 		case idestTitle:
@@ -1010,7 +1041,7 @@ ecEndGroupAction(RDS rds)
 			}
 			// do callback
 			if (no->pict_cb)
-				no->pict_cb(no->udata, &pict, &prop->pap);
+				no->pict_cb(no->udata, prop, &pict);
 
 			free(img.str);
 			free(pict.data);
@@ -1028,11 +1059,6 @@ ecEndGroupAction(RDS rds)
 		if (no->date_cb)
 			no->date_cb(no->udata, tdate, &date);
 		return ecOK;
-	}
-
-	if (rds == rdsFootnote){
-		if (no->foot_cb)
-			no->foot_cb(no->udata, 0);
 	}
 
 	return ecOK;
@@ -1078,7 +1104,7 @@ ecParseSpecialKeyword(IPFN ipfn)
 
 int ecRtfParse(
 		FILE *fp,
-		rprop_t *_prop,
+		prop_t *_prop,
 		rnotify_t *_no
 		)
 {
@@ -1455,7 +1481,11 @@ ecParseUTF(int ch)
 int
 ecPrintChar(int ch)
 {
+	STREAM s = sMain;
+	if (rds == rdsFootnote)
+		s = sFootnotes;
+	
 	if (no->char_cb)
-		no->char_cb(no->udata, ch, &prop->chp);
+		no->char_cb(no->udata, s, prop, ch);
 	return ecOK;
 }

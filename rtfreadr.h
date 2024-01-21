@@ -9,6 +9,26 @@
 #include <stdio.h>
 #include "rtftype.h"
 
+typedef enum {
+	sMain,
+	sFootnotes,
+} STREAM;
+
+// command chars
+enum {
+	PAR = 257,  // end of parafraph
+	SECT,				// end of section
+	ROW,        // end of row
+	CELL,       // end of cell
+	FTNSEP,     // separates footnotes from the document
+	FTNSEPC,    // separates continued footnotes from the document
+	FTNCN,      // a notice for continued footnotes
+	AFTNSEP,    // separates endnotes from the document
+	AFTNSEPC,   // separates continued endnotes from the document
+	AFTNCN,     // a notice for continued endnotes
+	LIST,			  // list
+};
+
 typedef	struct rtfprop {
 	/* data */
 	CHP chp;
@@ -17,7 +37,7 @@ typedef	struct rtfprop {
 	DOP dop;
 	TRP trp;
 	TCP tcp;
-} rprop_t;
+} prop_t;
 
 typedef enum {
 	info_author,
@@ -31,34 +51,29 @@ typedef enum {
 	info_category,
 	info_doccomm,
 	info_hlinkbase,
-} INFO_T;
+} tINFO;
 
 typedef enum {
 	date_create,
 	date_revision,
 	date_print,
 	date_backup,
-} DATE_T;
+} tDATE;
 
 typedef struct rtfnotify {
 	void *udata;
 	int (*command_cb)(void *udata, const char *s, int param, char fParam);
-	int (*font_cb)   (void *udata, FONT *p);
-	int (*info_cb)   (void *udata, INFO_T t, const char *s);
-	int (*date_cb)   (void *udata, DATE_T t, DATE *d);
-	int (*style_cb)  (void *udata, STYLE *s);
-	int (*color_cb)  (void *udata, COLOR *c);
-	int (*sect_cb)   (void *udata, SEP *p);
-	int (*par_cb)    (void *udata, PAP *p);
-	int (*row_cb)    (void *udata, TRP *rp);
-	int (*cell_cb)   (void *udata, TRP *rp, TCP *cp);
-	int (*char_cb)   (void *udata, int ch, CHP *p);
-	int (*pict_cb)   (void *udata, PICT *pict, PAP *p);
-	int (*foot_cb)   (void *udata, int start);
+	int (*font_cb)(void *udata, FONT *p);
+	int (*info_cb)(void *udata, tINFO t, const char *s);
+	int (*date_cb)(void *udata, tDATE t, DATE *d);
+	int (*style_cb)(void *udata, STYLE *s);
+	int (*color_cb)(void *udata, COLOR *c);
+	int (*char_cb)(void *udata, STREAM s, prop_t *p, int ch);
+	int (*pict_cb)(void *udata, prop_t *p, PICT *pict);
 } rnotify_t;
 
 /* parse RTF file and run callbacks */
-int ecRtfParse(FILE *fp, rprop_t *prop, rnotify_t *no);
+int ecRtfParse(FILE *fp, prop_t *prop, rnotify_t *no);
 
 // RTF parser error codes
 #define ecOK									0     // Everything's fine!

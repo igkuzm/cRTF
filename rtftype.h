@@ -77,12 +77,12 @@ typedef enum {
 /* Paragraph properties */
 typedef struct para_prop
 {
+	char fIntbl;			 // if in table paragraph
   int xaLeft;        // left indent in twips
   int xaRight;       // right indent in twips
 	int xaFirst;       // first line indent in twips
 	JUST just;         // justification
 	int s;             // paragraph style 
-	char fIntbl;			 // if in table paragraph
 } PAP;               // PAragraph Properties
 
 /* Section break type */

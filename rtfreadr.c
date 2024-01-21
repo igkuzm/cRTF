@@ -1113,6 +1113,9 @@ int ecRtfParse(
 {
 	fpIn = fp;
 	prop = _prop;
+	// set prop to 0
+	memset(prop, 0, sizeof(prop_t));
+
 	no = _no;
 			
 	int ch;

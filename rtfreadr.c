@@ -154,6 +154,7 @@ typedef enum {
 	ipropAftnn,
 	ipropGutter,
 	ipropMargirror,
+	ipropIntbl,
 
 	ipropMax
 } IPROP;
@@ -264,8 +265,8 @@ PROP rgprop [ipropMax] = {
 		 actnSpec,   propPap,    0,                            // ipropPard
 		 actnSpec,   propChp,    0,                            // ipropPlain
 		 actnSpec,   propSep,    0,                            // ipropSectd
-		 actnSpec,   propSep,    0,                            // ipropTrowd
-		 actnSpec,   propSep,    0,                            // ipropTcelld
+		 actnSpec,   propTrp,    0,                            // ipropTrowd
+		 actnSpec,   propTcp,    0,                            // ipropTcelld
 		 actnWord,   propFnt,    offsetof(FONT, charset),      // ipropFcharset
 		 actnWord,   propFnt,    offsetof(FONT, fprq),         // ipropFprq
 		 actnByte,   propFnt,    offsetof(FONT, ftype),        // ipropFtype
@@ -336,12 +337,13 @@ PROP rgprop [ipropMax] = {
 		 actnWord,   propDop,    offsetof(DOP, ep),            // ipropEp
 		 actnWord,   propDop,    offsetof(DOP, fb),            // ipropFtnstart
 		 actnWord,   propDop,    offsetof(DOP, eb),            // ipropAftnstart
-		 actnByte,   propTcp,    offsetof(DOP, fr),            // ipropFtnrestart,
-		 actnByte,   propTcp,    offsetof(DOP, er),            // ipropAftnrestart,
+		 actnByte,   propDop,    offsetof(DOP, fr),            // ipropFtnrestart,
+		 actnByte,   propDop,    offsetof(DOP, er),            // ipropAftnrestart,
 		 actnWord,   propDop,    offsetof(DOP, fn),            // ipropFtnn
 		 actnWord,   propDop,    offsetof(DOP, en),            // ipropAftnn
 		 actnWord,   propDop,    offsetof(DOP, gutter),        // ipropGutter
-		 actnByte,   propTcp,    offsetof(DOP, fMirror),       // ipropMargirror
+		 actnByte,   propDop,    offsetof(DOP, fMirror),       // ipropMargirror
+		 actnByte,   propPap,    offsetof(PAP, fIntbl),        // ipropIntbl
 
 };
 
@@ -568,6 +570,7 @@ SYM rgsymRtf[] = {
 	   "aftnnchi",   fenChi,    fTrue,      kwdProp,         ipropAftnn,
 	   "gutter",     0,         fFalse,     kwdProp,         ipropGutter,
 	   "margmirror", 1,         fTrue,      kwdProp,         ipropMargirror,
+	   "intbl",      1,         fTrue,      kwdProp,         ipropIntbl,
 	 	};
 
 // Parser vars

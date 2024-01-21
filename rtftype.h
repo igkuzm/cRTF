@@ -82,6 +82,7 @@ typedef struct para_prop
 	int xaFirst;       // first line indent in twips
 	JUST just;         // justification
 	int s;             // paragraph style 
+	char fIntbl;			 // if in table paragraph
 } PAP;               // PAragraph Properties
 
 /* Section break type */

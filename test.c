@@ -2,25 +2,25 @@
  * File              : test.c
  * Author            : Igor V. Sementsov <ig.kuzm@gmail.com>
  * Date              : 18.01.2024
- * Last Modified Date: 20.01.2024
+ * Last Modified Date: 28.05.2024
  * Last Modified By  : Igor V. Sementsov <ig.kuzm@gmail.com>
  */
 
 #include <stdio.h>
 #include "rtfreadr.h"
-#include "rtftype.h"
+#include "mswordtype.h"
 #include <string.h>
 #include "str.h"
 
 struct str str;
 
-int info_cb(void *d, INFO_T t, const char *s)
+int info_cb(void *d, tINFO t, const char *s)
 {
 	printf("%d: %s\n", t, s);
 	return 0;
 }
 
-int date_cb(void *data, DATE_T t, DATE *d)
+int date_cb(void *data, tDATE t, DATE *d)
 {
 	printf("%d: %d.%d.%d %d:%d:%d\n", t, d->day, d->month, d->year, d->hour, d->min, d->sec);
 	return 0;
@@ -38,7 +38,7 @@ int font_cb(void *d, FONT *f)
 	return 0;
 }
 
-int char_cb(void *d, int ch, CHP *p)
+int char_cb(void *d, STREAM s, prop_t *p, int ch)
 {
 	putchar(ch);
 	char c = ch;
@@ -46,15 +46,9 @@ int char_cb(void *d, int ch, CHP *p)
 	return 0;
 }
 
-int par_cb(void *d, PAP *p)
+int pict_cb(void *d, prop_t *p, PICT *pict)
 {
-	printf("par\n");
-	return 0;
-}
-
-int pict_cb(void *d, PICT *p)
-{
-	printf("TYPE: %d\n", p->type);
+	printf("TYPE: %d\n", pict->type);
 	return 0;
 }
 
@@ -69,7 +63,7 @@ int main(int argc, char *argv[])
 	FILE *fp;
 	int ec;
 
-	rprop_t p;
+	prop_t p;
 	rnotify_t n;
 	memset(&(n), 0, sizeof(rnotify_t));
 
@@ -77,9 +71,8 @@ int main(int argc, char *argv[])
 
 	n.font_cb = font_cb;
 	n.char_cb = char_cb;
-	n.par_cb = par_cb;
 	n.style_cb = style_cb;
-	n.par_cb = par_cb;
+	n.char_cb = char_cb;
 	n.pict_cb = pict_cb;
 	n.info_cb = info_cb;
 	n.date_cb = date_cb;

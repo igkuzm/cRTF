@@ -7,7 +7,7 @@
  */
 
 #include <stdio.h>
-#include "rtftype.h"
+#include "mswordtype.h"
 
 typedef enum {
 	sMain,
